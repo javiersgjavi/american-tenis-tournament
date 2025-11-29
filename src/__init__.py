@@ -11,6 +11,7 @@ from .genetic_algorithm import (
     calculate_waiting_penalty,
     calculate_early_cut_bonus,
     calculate_fitness,
+    GeneticAlgorithm,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     'calculate_waiting_penalty',
     'calculate_early_cut_bonus',
     'calculate_fitness',
+    'GeneticAlgorithm',
 ]

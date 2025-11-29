@@ -342,15 +342,15 @@ if random() < mutation_rate:
 - [x] Implement combined fitness function with all penalties + early cut bonus
 - [x] Add tests in `tests/test_fitness.py`
 
-### Phase 3: Genetic Algorithm ⏳
-- [ ] Implement `GeneticAlgorithm` class
-- [ ] Implement `initialize_population()`
-- [ ] Implement `tournament_selection()`
-- [ ] Implement `crossover()`
-- [ ] Implement `mutate()`
-- [ ] Implement main GA loop with elitism
-- [ ] Add progress tracking
-- [ ] Add tests in `tests/test_genetic_algorithm.py`
+### Phase 3: Genetic Algorithm ✅
+- [x] Implement `GeneticAlgorithm` class
+- [x] Implement `initialize_population()`
+- [x] Implement `tournament_selection()`
+- [x] Implement `crossover()`
+- [x] Implement `mutate()`
+- [x] Implement main GA loop with elitism
+- [x] Add progress tracking
+- [x] Add tests in `tests/test_genetic_algorithm.py`
 
 ### Phase 4: Cut Points Detection ⏳
 - [ ] Implement `detect_cut_points()` function
@@ -380,15 +380,15 @@ if random() < mutation_rate:
 
 ## 🎯 Current Status
 
-**Status:** Phase 2 Complete - Fitness Functions Implemented  
+**Status:** Phase 3 Complete - Genetic Algorithm Implemented  
 **Last Updated:** 2025-11-29  
-**Next Steps:** Begin implementation of Phase 3 (Genetic Algorithm)
+**Next Steps:** Begin implementation of Phase 4 (Cut Points Detection)
 
 ## 📊 Implementation Progress
 
 - [x] Phase 1: Core Data Structures ✅
 - [x] Phase 2: Fitness Function ✅
-- [ ] Phase 3: Genetic Algorithm
+- [x] Phase 3: Genetic Algorithm ✅
 - [ ] Phase 4: Cut Points Detection
 - [ ] Phase 5: Output Formatting
 - [ ] Phase 6: Main Script and Notebook
@@ -459,6 +459,136 @@ uv run python main.py
 
 # Run jupyter notebook
 uv run jupyter notebook tournament.ipynb
+```
+
+---
+
+## 🧬 Genetic Algorithm Design Decisions
+
+### Selection Method: Tournament Selection
+
+**Elegido:** Tournament Selection con tamaño de torneo configurable (default: 3)
+
+**Razones:**
+- **Simplicidad:** Fácil de implementar y entender
+- **Eficiencia:** No requiere ordenar toda la población
+- **Presión selectiva ajustable:** El tamaño del torneo controla la presión selectiva
+- **Diversidad:** Permite que individuos menos aptos tengan oportunidad de reproducirse
+
+**Alternativas consideradas:**
+- Roulette Wheel Selection: Más compleja, problemas con fitness negativos
+- Rank Selection: Requiere ordenar toda la población (O(n log n))
+
+### Crossover Method: Single-Point Crossover
+
+**Elegido:** Single-Point Crossover con tasa configurable (default: 0.8)
+
+**Razones:**
+- **Preserva bloques de matches:** Los segmentos del calendario se mantienen intactos
+- **Simplicidad:** Fácil de implementar y debuggear
+- **Efectividad:** Funciona bien para problemas de scheduling
+- **Validez garantizada:** Los hijos siempre son válidos (todos los matches son válidos)
+
+**Cómo funciona:**
+1. Se elige un punto de corte aleatorio entre 1 y n_matches-1
+2. Hijo1 = Parent1[0:punto] + Parent2[punto:end]
+3. Hijo2 = Parent2[0:punto] + Parent1[punto:end]
+
+**Alternativas consideradas:**
+- Two-Point Crossover: Más complejo, sin beneficio claro
+- Uniform Crossover: Destruye más la estructura, menos adecuado para scheduling
+
+### Mutation Methods: Three Operators
+
+**Elegidos:** Tres operadores de mutación con selección aleatoria
+
+#### 1. Replace Match
+- **Descripción:** Reemplaza un match aleatorio con uno nuevo generado aleatoriamente
+- **Uso:** Introduce nueva diversidad genética
+- **Impacto:** Moderado - cambia 4 jugadores en el calendario
+
+#### 2. Swap Matches
+- **Descripción:** Intercambia la posición de dos matches en el calendario
+- **Uso:** Optimiza el orden sin cambiar los matches
+- **Impacto:** Bajo - útil para reducir tiempos de espera
+
+#### 3. Regenerate Match
+- **Descripción:** Regenera completamente un match aleatorio
+- **Uso:** Similar a Replace, introduce variación
+- **Impacto:** Moderado - refresca parte del calendario
+
+**Tasa de mutación:** 0.1 (10% de probabilidad)
+
+**Razones:**
+- **Diversidad:** Tres operadores diferentes mantienen diversidad genética
+- **Balance:** Combinación de cambios grandes (replace) y pequeños (swap)
+- **Validez:** Todos los operadores garantizan calendarios válidos
+
+**Alternativas consideradas:**
+- Swap Players: Más complejo, puede generar matches inválidos
+- Inversion: No aporta beneficio claro para este problema
+
+### Elitism Strategy
+
+**Elegido:** Elitismo con tamaño configurable (default: 2)
+
+**Razones:**
+- **Convergencia garantizada:** El mejor fitness nunca empeora
+- **Preserva buenas soluciones:** Los mejores individuos pasan directamente
+- **Balance:** Tamaño pequeño (2) mantiene diversidad
+
+**Cómo funciona:**
+1. Se ordenan los individuos por fitness
+2. Los mejores `elitism_size` pasan directamente a la siguiente generación
+3. El resto se genera mediante selección, crossover y mutación
+
+### Population and Generation Parameters
+
+**Defaults elegidos:**
+- **Population size:** 100 individuos
+- **Generations:** 200 generaciones
+- **Mutation rate:** 0.1 (10%)
+- **Crossover rate:** 0.8 (80%)
+- **Elitism size:** 2 individuos
+
+**Razones:**
+- Población de 100 ofrece buena diversidad sin ser muy costosa
+- 200 generaciones permiten convergencia adecuada
+- Tasa de mutación baja (10%) evita destruir buenas soluciones
+- Tasa de crossover alta (80%) favorece la recombinación
+- Elitismo pequeño (2) preserva lo mejor sin estancar
+
+### Fitness Function Weights
+
+**Defaults elegidos:**
+- `weight_balance = 100.0` - **MUY ALTA** (prioridad máxima)
+- `weight_opponent_rep = 10.0` - Media
+- `weight_team_rep = 10.0` - Media
+- `weight_waiting = 5.0` - Baja-Media
+- `weight_early_cut = 50.0` - Alta (incentiva cortes tempranos)
+
+**Razones:**
+- Balance es lo MÁS IMPORTANTE (peso 100)
+- Early cut bonus es muy importante (peso 50) para calendarios flexibles
+- Repeticiones son moderadamente importantes (peso 10)
+- Tiempos de espera son menos críticos (peso 5)
+
+### Chromosome Representation
+
+**Elegido:** Matriz numpy de shape `(n_matches, 2 * n_players)`
+
+**Razones:**
+- **Eficiencia:** Operaciones vectorizadas con numpy
+- **Claridad:** Cada fila es un match, fácil de visualizar
+- **Validación:** Pydantic valida automáticamente cada match
+- **Flexibilidad:** Fácil de modificar (crossover, mutation)
+
+**Formato:**
+```
+Match vector: [team1_bits | team2_bits]
+Ejemplo 7 jugadores: [1,0,0,1,0,0,0, 0,1,1,0,0,0,0]
+                      A B C D E F G   A B C D E F G
+                      [  Team 1   ]   [  Team 2   ]
 ```
 
 ---

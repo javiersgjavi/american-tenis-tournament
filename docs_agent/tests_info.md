@@ -13,15 +13,16 @@ This document provides detailed information about the test suite, what is being 
 
 ## Test Suite Summary
 
-**Total Tests:** 51
+**Total Tests:** 75
 **Status:** ✅ All passing
-**Coverage:** Phase 1 (Core Data Structures) + Phase 2 (Fitness Functions)
+**Coverage:** Phase 1 (Core Data Structures) + Phase 2 (Fitness Functions) + Phase 3 (Genetic Algorithm)
 
 ### Test Files
 
 1. `tests/test_match.py` - 18 tests
 2. `tests/test_calendar.py` - 12 tests
 3. `tests/test_fitness.py` - 21 tests
+4. `tests/test_genetic_algorithm.py` - 24 tests
 
 ---
 
@@ -415,9 +416,155 @@ Tests for the `calculate_fitness()` function.
 
 ---
 
+## 4. Genetic Algorithm Tests (`tests/test_genetic_algorithm.py`)
+
+### 4.1 `TestGeneticAlgorithmInitialization` Class (3 tests)
+
+Tests for GA initialization and configuration.
+
+#### ✅ `test_create_genetic_algorithm`
+- **Purpose:** Verify GA instance can be created with all parameters
+- **Expected:** All parameters correctly set
+
+#### ✅ `test_default_weights`
+- **Purpose:** Verify default fitness weights are set correctly
+- **Expected:** Default weights match specification
+
+#### ✅ `test_custom_weights`
+- **Purpose:** Verify custom fitness weights can be configured
+- **Expected:** Custom weights are applied
+
+---
+
+### 4.2 `TestInitializePopulation` Class (2 tests)
+
+Tests for population initialization.
+
+#### ✅ `test_initialize_population_size`
+- **Purpose:** Verify population has correct size
+- **Expected:** Population size matches configuration
+
+#### ✅ `test_initialize_population_valid_calendars`
+- **Purpose:** Verify all calendars in population are valid
+- **Expected:** All calendars pass validation
+
+---
+
+### 4.3 `TestTournamentSelection` Class (2 tests)
+
+Tests for tournament selection operator.
+
+#### ✅ `test_tournament_selection_returns_calendar`
+- **Purpose:** Verify selection returns a Calendar object
+- **Expected:** Returns valid Calendar instance
+
+#### ✅ `test_tournament_selection_favors_better_fitness`
+- **Purpose:** Verify selection tends to pick better individuals
+- **Expected:** Selection works correctly over multiple runs
+
+---
+
+### 4.4 `TestCrossover` Class (3 tests)
+
+Tests for crossover operator.
+
+#### ✅ `test_crossover_returns_two_calendars`
+- **Purpose:** Verify crossover returns two offspring
+- **Expected:** Returns two Calendar objects
+
+#### ✅ `test_crossover_produces_valid_calendars`
+- **Purpose:** Verify crossover produces valid calendars
+- **Expected:** Both offspring are valid
+
+#### ✅ `test_crossover_with_crossover_rate`
+- **Purpose:** Verify crossover respects crossover_rate
+- **Expected:** Works correctly with rate=0.0
+
+---
+
+### 4.5 `TestMutation` Class (3 tests)
+
+Tests for mutation operator.
+
+#### ✅ `test_mutate_returns_calendar`
+- **Purpose:** Verify mutation returns a Calendar
+- **Expected:** Returns valid Calendar instance
+
+#### ✅ `test_mutate_produces_valid_calendar`
+- **Purpose:** Verify mutation produces valid calendar
+- **Expected:** Mutated calendar is valid
+
+#### ✅ `test_mutate_with_mutation_rate`
+- **Purpose:** Verify mutation respects mutation_rate
+- **Expected:** Works correctly with rate=0.0
+
+---
+
+### 4.6 `TestCalculateFitnessForCalendar` Class (2 tests)
+
+Tests for fitness calculation method.
+
+#### ✅ `test_calculate_fitness_returns_float`
+- **Purpose:** Verify fitness calculation returns float
+- **Expected:** Returns finite float for valid calendar
+
+#### ✅ `test_calculate_fitness_uses_weights`
+- **Purpose:** Verify fitness uses configured weights
+- **Expected:** Different weights produce different fitness
+
+---
+
+### 4.7 `TestGeneticAlgorithmRun` Class (6 tests)
+
+Tests for main GA loop.
+
+#### ✅ `test_run_returns_best_calendar`
+- **Purpose:** Verify run returns best calendar found
+- **Expected:** Returns valid Calendar instance
+
+#### ✅ `test_run_with_small_problem`
+- **Purpose:** Verify GA can solve small problem
+- **Expected:** Returns valid solution with reasonable fitness
+
+#### ✅ `test_run_improves_over_generations`
+- **Purpose:** Verify fitness improves over generations
+- **Expected:** Final fitness is finite and valid
+
+#### ✅ `test_run_with_elitism`
+- **Purpose:** Verify elitism preserves best individuals
+- **Expected:** Returns valid solution
+
+#### ✅ `test_run_with_verbose_false`
+- **Purpose:** Verify run works with verbose=False
+- **Expected:** Runs without printing progress
+
+#### ✅ `test_run_with_verbose_true`
+- **Purpose:** Verify run works with verbose=True
+- **Expected:** Runs with progress output
+
+---
+
+### 4.8 `TestGeneticAlgorithmEdgeCases` Class (3 tests)
+
+Tests for edge cases and error handling.
+
+#### ✅ `test_small_population`
+- **Purpose:** Verify GA works with very small population
+- **Expected:** Returns valid solution
+
+#### ✅ `test_single_generation`
+- **Purpose:** Verify GA works with single generation
+- **Expected:** Returns valid solution
+
+#### ✅ `test_large_elitism`
+- **Purpose:** Verify GA works with large elitism size
+- **Expected:** Returns valid solution
+
+---
+
 ## Future Test Additions
 
-### Phase 3: Genetic Algorithm Tests
+### Phase 4: Cut Points Detection Tests
 - Test population initialization
 - Test selection methods
 - Test crossover operations
@@ -456,6 +603,6 @@ Tests for the `calculate_fitness()` function.
 ---
 
 **Last Updated:** 2025-11-29  
-**Phase:** 2 - Fitness Functions  
-**Test Count:** 51 tests, all passing ✅
+**Phase:** 3 - Genetic Algorithm  
+**Test Count:** 75 tests, all passing ✅
 
