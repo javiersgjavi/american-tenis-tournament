@@ -15,6 +15,13 @@ from .genetic_algorithm import (
     detect_cut_points,
     validate_solution,
 )
+from .printer import (
+    match_vector_to_string,
+    print_calendar,
+    print_statistics,
+    print_cut_points,
+    print_results,
+)
 
 __all__ = [
     'Match',
@@ -30,4 +37,9 @@ __all__ = [
     'GeneticAlgorithm',
     'detect_cut_points',
     'validate_solution',
+    'match_vector_to_string',
+    'print_calendar',
+    'print_statistics',
+    'print_cut_points',
+    'print_results',
 ]
