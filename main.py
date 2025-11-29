@@ -25,11 +25,12 @@ def main():
     
     # Genetic Algorithm parameters
     POPULATION_SIZE = 100   # Size of the population
-    GENERATIONS = 20       # Number of generations to evolve
+    GENERATIONS = 200       # Number of generations to evolve
     MUTATION_RATE = 0.1     # Probability of mutation (0.0 to 1.0)
     CROSSOVER_RATE = 0.8    # Probability of crossover (0.0 to 1.0)
     ELITISM_SIZE = 2        # Number of best individuals to preserve
     N_JOBS = -1             # Number of parallel jobs (-1 = all cores, 1 = sequential)
+    EARLY_STOPPING_PATIENCE = 20  # Stop if no improvement for N generations (None to disable)
     
     # Fitness weights
     WEIGHT_BALANCE = 100.0      # Most important - balance matches per player
@@ -51,6 +52,7 @@ def main():
     print(f"  • Crossover rate: {CROSSOVER_RATE}")
     print(f"  • Elitism size: {ELITISM_SIZE}")
     print(f"  • Parallel jobs: {N_JOBS if N_JOBS > 0 else 'all CPU cores'}")
+    print(f"  • Early stopping patience: {EARLY_STOPPING_PATIENCE if EARLY_STOPPING_PATIENCE else 'disabled'}")
     
     print("\n⚖️  Fitness Weights:")
     print(f"  • Balance: {WEIGHT_BALANCE} (highest priority)")
@@ -80,7 +82,8 @@ def main():
         weight_team_rep=WEIGHT_TEAM_REP,
         weight_waiting=WEIGHT_WAITING,
         weight_early_cut=WEIGHT_EARLY_CUT,
-        n_jobs=N_JOBS
+        n_jobs=N_JOBS,
+        early_stopping_patience=EARLY_STOPPING_PATIENCE
     )
     
     # ========================================================================

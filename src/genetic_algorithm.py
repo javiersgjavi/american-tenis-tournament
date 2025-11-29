@@ -149,7 +149,7 @@ def calculate_waiting_penalty(calendar: Calendar) -> float:
 
 def calculate_early_cut_bonus(calendar: Calendar) -> float:
     """
-    Calculate bonus for having cut points early in the calendar.
+    Calculate bonus for having cut points early in the calendar and maximizing total cut points.
     
     A cut point is an index where the tournament can be stopped with all
     players having played a balanced number of matches.
@@ -157,9 +157,16 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
     Perfect cut: max_difference = 0 (all players played same number)
     Acceptable cut: max_difference ≤ 1
     
-    The bonus rewards calendars where the first cut point appears early.
+    The bonus rewards:
+    1. Calendars where the first cut point appears early (high priority)
+    2. Calendars with many cut points throughout (maximize flexibility)
+    3. Calendars with well-distributed cut points (uniform spacing)
     
-    Formula: bonus = 1000 / (first_perfect_cut + 1) + additional_bonuses
+    Formula: 
+        bonus = 1000 / (first_perfect_cut + 1) + 
+                perfect_cut_count * 20.0 + 
+                acceptable_cut_count * 5.0 +
+                distribution_bonus
     
     Args:
         calendar: Calendar object to evaluate
@@ -173,6 +180,9 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
     first_perfect_cut = None
     first_acceptable_cut = None
     perfect_cut_count = 0
+    acceptable_cut_count = 0
+    perfect_cut_positions = []
+    acceptable_cut_positions = []
     
     # Check each position in the calendar
     for cut_index in range(1, len(calendar) + 1):
@@ -193,10 +203,15 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
             if first_perfect_cut is None:
                 first_perfect_cut = cut_index
             perfect_cut_count += 1
-        
-        # Check for acceptable cut
-        if max_diff <= 1 and first_acceptable_cut is None:
-            first_acceptable_cut = cut_index
+            perfect_cut_positions.append(cut_index)
+            acceptable_cut_count += 1  # Perfect cuts are also acceptable
+            acceptable_cut_positions.append(cut_index)
+        # Check for acceptable cut (only if not perfect)
+        elif max_diff <= 1:
+            if first_acceptable_cut is None:
+                first_acceptable_cut = cut_index
+            acceptable_cut_count += 1
+            acceptable_cut_positions.append(cut_index)
     
     bonus = 0.0
     
@@ -207,9 +222,35 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
         # If no perfect cut, give smaller bonus for acceptable cut
         bonus += 500.0 / first_acceptable_cut
     
-    # Additional bonus for multiple perfect cuts
-    if perfect_cut_count > 1:
-        bonus += perfect_cut_count * 10.0
+    # IMPROVED: Significant bonus for total number of cut points
+    # This maximizes flexibility - more cut points = more options to stop tournament
+    bonus += perfect_cut_count * 20.0  # Increased from 10.0
+    bonus += acceptable_cut_count * 5.0  # Additional bonus for all acceptable cuts
+    
+    # NEW: Bonus for well-distributed cut points
+    # Calculate distribution quality by measuring gaps between consecutive cuts
+    if len(acceptable_cut_positions) >= 2:
+        # Calculate gaps between consecutive cut points
+        gaps = []
+        for i in range(len(acceptable_cut_positions) - 1):
+            gap = acceptable_cut_positions[i + 1] - acceptable_cut_positions[i]
+            gaps.append(gap)
+        
+        # Calculate standard deviation of gaps (lower is better = more uniform)
+        if gaps:
+            avg_gap = sum(gaps) / len(gaps)
+            variance = sum((g - avg_gap) ** 2 for g in gaps) / len(gaps)
+            std_dev = variance ** 0.5
+            
+            # Bonus inversely proportional to standard deviation
+            # Lower std_dev = more uniform distribution = higher bonus
+            # Add 1 to avoid division by zero
+            distribution_bonus = 50.0 / (std_dev + 1.0)
+            bonus += distribution_bonus
+            
+            # Additional bonus if gaps are very uniform (std_dev < 2)
+            if std_dev < 2.0:
+                bonus += 25.0  # Extra bonus for excellent distribution
     
     return float(bonus)
 
@@ -441,7 +482,8 @@ class GeneticAlgorithm:
         weight_team_rep: float = 10.0,
         weight_waiting: float = 5.0,
         weight_early_cut: float = 50.0,
-        n_jobs: int = 1
+        n_jobs: int = 1,
+        early_stopping_patience: int | None = None
     ):
         """
         Initialize the Genetic Algorithm.
@@ -460,6 +502,7 @@ class GeneticAlgorithm:
             weight_waiting: Weight for waiting penalty
             weight_early_cut: Weight for early cut bonus
             n_jobs: Number of parallel jobs for fitness calculation (-1 for all cores, 1 for sequential)
+            early_stopping_patience: Number of generations without improvement before stopping (None to disable)
         """
         self.n_players = n_players
         self.n_matches = n_matches
@@ -469,6 +512,7 @@ class GeneticAlgorithm:
         self.crossover_rate = crossover_rate
         self.elitism_size = elitism_size
         self.n_jobs = n_jobs
+        self.early_stopping_patience = early_stopping_patience
         
         # Fitness weights
         self.weight_balance = weight_balance
@@ -698,6 +742,18 @@ class GeneticAlgorithm:
                 'Avg': f'{gen_avg_fitness:.2f}',
                 'No Improv': generations_without_improvement
             })
+            
+            # Check early stopping condition
+            if (self.early_stopping_patience is not None and 
+                generations_without_improvement >= self.early_stopping_patience):
+                if verbose:
+                    tqdm.write(f"\n⏹️  Early stopping triggered after {generation + 1} generations")
+                    tqdm.write(f"   No improvement for {generations_without_improvement} generations")
+                pbar.close()
+                if verbose:
+                    print(f"\n✓ Optimization completed (early stopping)!")
+                    print(f"  Best fitness achieved: {best_fitness:.2f}")
+                return best_calendar
             
             # Create new generation
             new_population = []

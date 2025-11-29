@@ -424,3 +424,107 @@ class TestGeneticAlgorithmEdgeCases:
         best_calendar = ga.run(verbose=False)
         assert best_calendar.is_valid()
 
+
+class TestEarlyStopping:
+    """Tests for early stopping functionality."""
+    
+    def test_early_stopping_parameter_exists(self):
+        """Test that early_stopping_patience parameter can be set."""
+        ga = GeneticAlgorithm(
+            n_players=4,
+            n_matches=5,
+            population_size=10,
+            generations=100,
+            early_stopping_patience=10
+        )
+        
+        assert ga.early_stopping_patience == 10
+    
+    def test_early_stopping_disabled_by_default(self):
+        """Test that early stopping is disabled by default (None)."""
+        ga = GeneticAlgorithm(
+            n_players=4,
+            n_matches=5,
+            population_size=10,
+            generations=100
+        )
+        
+        assert ga.early_stopping_patience is None
+    
+    def test_early_stopping_stops_before_max_generations(self):
+        """Test that early stopping stops before reaching max generations."""
+        ga = GeneticAlgorithm(
+            n_players=4,
+            n_matches=5,
+            population_size=20,
+            generations=100,
+            early_stopping_patience=5
+        )
+        
+        best_calendar = ga.run(verbose=False)
+        
+        # Should stop early (less than 100 generations)
+        assert len(ga.best_fitness_history) < 100
+        assert best_calendar.is_valid()
+    
+    def test_early_stopping_with_zero_patience(self):
+        """Test with patience=0 (should stop after first generation without improvement)."""
+        ga = GeneticAlgorithm(
+            n_players=4,
+            n_matches=5,
+            population_size=10,
+            generations=100,
+            early_stopping_patience=0
+        )
+        
+        best_calendar = ga.run(verbose=False)
+        
+        # Should stop very early
+        assert len(ga.best_fitness_history) <= 10
+        assert best_calendar.is_valid()
+    
+    def test_no_early_stopping_runs_all_generations(self):
+        """Test that without early stopping, all generations run."""
+        ga = GeneticAlgorithm(
+            n_players=4,
+            n_matches=5,
+            population_size=10,
+            generations=20,
+            early_stopping_patience=None  # Disabled
+        )
+        
+        best_calendar = ga.run(verbose=False)
+        
+        # Should run all 20 generations
+        assert len(ga.best_fitness_history) == 20
+        assert best_calendar.is_valid()
+    
+    def test_early_stopping_message_in_verbose_mode(self):
+        """Test that early stopping message is displayed in verbose mode."""
+        import io
+        import sys
+        
+        ga = GeneticAlgorithm(
+            n_players=4,
+            n_matches=5,
+            population_size=20,
+            generations=100,
+            early_stopping_patience=5
+        )
+        
+        # Capture output
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+        
+        best_calendar = ga.run(verbose=True)
+        
+        # Restore stdout
+        sys.stdout = sys.__stdout__
+        output = captured_output.getvalue()
+        
+        # Should mention early stopping if it happened
+        if len(ga.best_fitness_history) < 100:
+            assert "early stopping" in output.lower() or "stopped early" in output.lower()
+        
+        assert best_calendar.is_valid()
+

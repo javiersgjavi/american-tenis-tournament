@@ -20,6 +20,7 @@ from .printer import (
     print_calendar,
     print_statistics,
     print_cut_points,
+    print_heuristic_details,
     print_results,
 )
 
@@ -41,5 +42,6 @@ __all__ = [
     'print_calendar',
     'print_statistics',
     'print_cut_points',
+    'print_heuristic_details',
     'print_results',
 ]
