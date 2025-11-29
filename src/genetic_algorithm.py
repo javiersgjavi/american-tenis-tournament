@@ -270,12 +270,144 @@ def calculate_fitness(
 
 
 # ============================================================================
-# CUT POINTS DETECTION (TO BE IMPLEMENTED IN PHASE 4)
+# CUT POINTS DETECTION (PHASE 4)
 # ============================================================================
 
-# TODO: Phase 4 - Implement cut points detection
-# - detect_cut_points()
-# - validate_solution()
+def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
+    """
+    Detect perfect and acceptable cut points in a calendar.
+    
+    A cut point is an index where the tournament can be stopped while
+    maintaining balance:
+    - Perfect cut: max_difference = 0 (all players played same number)
+    - Acceptable cut: max_difference ≤ 1
+    
+    Args:
+        calendar: Calendar to analyze
+        
+    Returns:
+        Tuple of (perfect_cuts, acceptable_cuts) where each is a list of indices
+    """
+    perfect_cuts = []
+    acceptable_cuts = []
+    
+    if len(calendar) == 0:
+        return perfect_cuts, acceptable_cuts
+    
+    # Check each position in the calendar
+    for cut_index in range(1, len(calendar) + 1):
+        # Count matches per player up to this point
+        matches_count = {i: 0 for i in range(calendar.n_players)}
+        
+        for i in range(cut_index):
+            match = calendar.get_match(i)
+            players = match.get_players()
+            for player in players:
+                matches_count[player] += 1
+        
+        # Calculate difference
+        counts = list(matches_count.values())
+        max_diff = max(counts) - min(counts)
+        
+        # Check for perfect cut
+        if max_diff == 0:
+            perfect_cuts.append(cut_index)
+            acceptable_cuts.append(cut_index)  # Perfect is also acceptable
+        # Check for acceptable cut
+        elif max_diff <= 1:
+            acceptable_cuts.append(cut_index)
+    
+    return perfect_cuts, acceptable_cuts
+
+
+def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
+    """
+    Validate the quality of a calendar solution.
+    
+    Quality levels:
+    - EXCELLENT: First perfect cut in first 30% of matches
+    - GOOD: First perfect cut in first 50% of matches
+    - ACCEPTABLE: First acceptable cut in first 60% of matches
+    - REJECTED: No cut points or first cut after 60%
+    
+    Args:
+        calendar: Calendar to validate
+        
+    Returns:
+        Tuple of (is_valid, quality, message)
+        - is_valid: True if solution meets minimum requirements
+        - quality: Quality level string
+        - message: Descriptive message about the solution
+    """
+    # Check if all matches are valid
+    if not calendar.is_valid():
+        return False, "REJECTED", "Calendar contains invalid matches"
+    
+    # Detect cut points
+    perfect_cuts, acceptable_cuts = detect_cut_points(calendar)
+    
+    n_matches = len(calendar)
+    
+    if n_matches == 0:
+        return False, "REJECTED", "Calendar is empty"
+    
+    # Check for perfect cuts
+    if len(perfect_cuts) > 0:
+        first_perfect = perfect_cuts[0]
+        position_percent = (first_perfect / n_matches) * 100
+        
+        if position_percent <= 30:
+            return (
+                True,
+                "EXCELLENT",
+                f"Excellent! First perfect cut at match {first_perfect} "
+                f"({position_percent:.1f}% of calendar). "
+                f"Total perfect cuts: {len(perfect_cuts)}"
+            )
+        elif position_percent <= 50:
+            return (
+                True,
+                "GOOD",
+                f"Good solution. First perfect cut at match {first_perfect} "
+                f"({position_percent:.1f}% of calendar). "
+                f"Total perfect cuts: {len(perfect_cuts)}"
+            )
+        else:
+            return (
+                True,
+                "ACCEPTABLE",
+                f"Acceptable solution. First perfect cut at match {first_perfect} "
+                f"({position_percent:.1f}% of calendar). "
+                f"Total perfect cuts: {len(perfect_cuts)}"
+            )
+    
+    # Check for acceptable cuts
+    if len(acceptable_cuts) > 0:
+        first_acceptable = acceptable_cuts[0]
+        position_percent = (first_acceptable / n_matches) * 100
+        
+        if position_percent <= 60:
+            return (
+                True,
+                "ACCEPTABLE",
+                f"Acceptable solution. First acceptable cut at match {first_acceptable} "
+                f"({position_percent:.1f}% of calendar). "
+                f"Total acceptable cuts: {len(acceptable_cuts)}"
+            )
+        else:
+            return (
+                False,
+                "REJECTED",
+                f"Solution rejected. First acceptable cut too late at match {first_acceptable} "
+                f"({position_percent:.1f}% of calendar)"
+            )
+    
+    # No cut points found
+    return (
+        False,
+        "REJECTED",
+        "Solution rejected. No cut points found (calendar is very unbalanced)"
+    )
 
 
 # ============================================================================
@@ -510,7 +642,7 @@ class GeneticAlgorithm:
         """
         # Initialize population
         if verbose:
-            print(f"Inicializando población de {self.population_size} individuos...")
+            print(f"Initializing population of {self.population_size} individuals...")
         
         population = self.initialize_population()
         
@@ -538,8 +670,8 @@ class GeneticAlgorithm:
             
             # Print progress
             if verbose and (generation % 10 == 0 or generation == self.generations - 1):
-                print(f"Generación {generation + 1}/{self.generations} - "
-                      f"Mejor fitness: {best_fitness:.2f}")
+                print(f"Generation {generation + 1}/{self.generations} - "
+                      f"Best fitness: {best_fitness:.2f}")
             
             # Create new generation
             new_population = []
@@ -579,7 +711,7 @@ class GeneticAlgorithm:
             population = new_population[:self.population_size]
         
         if verbose:
-            print(f"\n¡Optimización completada!")
-            print(f"Mejor fitness alcanzado: {best_fitness:.2f}")
+            print(f"\nOptimization completed!")
+            print(f"Best fitness achieved: {best_fitness:.2f}")
         
         return best_calendar

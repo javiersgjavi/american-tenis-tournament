@@ -12,6 +12,8 @@ from .genetic_algorithm import (
     calculate_early_cut_bonus,
     calculate_fitness,
     GeneticAlgorithm,
+    detect_cut_points,
+    validate_solution,
 )
 
 __all__ = [
@@ -26,4 +28,6 @@ __all__ = [
     'calculate_early_cut_bonus',
     'calculate_fitness',
     'GeneticAlgorithm',
+    'detect_cut_points',
+    'validate_solution',
 ]
