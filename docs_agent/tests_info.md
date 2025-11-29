@@ -13,14 +13,15 @@ This document provides detailed information about the test suite, what is being 
 
 ## Test Suite Summary
 
-**Total Tests:** 30
+**Total Tests:** 51
 **Status:** ✅ All passing
-**Coverage:** Phase 1 - Core Data Structures
+**Coverage:** Phase 1 (Core Data Structures) + Phase 2 (Fitness Functions)
 
 ### Test Files
 
 1. `tests/test_match.py` - 18 tests
 2. `tests/test_calendar.py` - 12 tests
+3. `tests/test_fitness.py` - 21 tests
 
 ---
 
@@ -287,15 +288,134 @@ uv run pytest tests/ --cov=src --cov-report=html
 
 ---
 
-## Future Test Additions
+## 3. Fitness Tests (`tests/test_fitness.py`)
 
-### Phase 2: Fitness Function Tests
-- Test balance penalty calculation
-- Test opponent repetition penalty
-- Test team repetition penalty
-- Test waiting rounds penalty
-- Test early cut bonus
-- Test combined fitness function
+### 3.1 `TestBalancePenalty` Class (4 tests)
+
+Tests for the `calculate_balance_penalty()` function.
+
+#### ✅ `test_perfect_balance_zero_penalty`
+- **Purpose:** Verify perfectly balanced calendar has zero penalty
+- **Input:** Calendar where all players play same number of matches
+- **Expected:** `penalty == 0.0`
+
+#### ✅ `test_unbalanced_calendar_has_penalty`
+- **Purpose:** Verify unbalanced calendar has non-zero penalty
+- **Expected:** `penalty > 0.0`
+
+#### ✅ `test_penalty_calculation_formula`
+- **Purpose:** Verify penalty follows `(max - min)²` formula
+- **Input:** Calendar with max=3, min=0 matches
+- **Expected:** `penalty == 9.0` (3² = 9)
+
+#### ✅ `test_empty_calendar_zero_penalty`
+- **Purpose:** Verify empty calendar has zero penalty
+- **Expected:** `penalty == 0.0`
+
+---
+
+### 3.2 `TestOpponentRepetitionPenalty` Class (3 tests)
+
+Tests for the `calculate_opponent_repetition_penalty()` function.
+
+#### ✅ `test_no_repetitions_zero_penalty`
+- **Purpose:** Verify no repetitions gives zero penalty
+- **Expected:** `penalty == 0.0`
+
+#### ✅ `test_one_repetition_has_penalty`
+- **Purpose:** Verify repeated opponent pairings have penalty
+- **Expected:** Correct penalty calculation for repetitions
+
+#### ✅ `test_multiple_repetitions_quadratic_penalty`
+- **Purpose:** Verify penalty grows quadratically
+- **Input:** Same match repeated 3 times
+- **Expected:** `penalty == 16.0` (4 pairs × (3-1)² = 16)
+
+---
+
+### 3.3 `TestTeamRepetitionPenalty` Class (3 tests)
+
+Tests for the `calculate_team_repetition_penalty()` function.
+
+#### ✅ `test_no_repetitions_zero_penalty`
+- **Purpose:** Verify no team repetitions gives zero penalty
+- **Expected:** `penalty == 0.0`
+
+#### ✅ `test_one_repetition_has_penalty`
+- **Purpose:** Verify repeated team pairings have penalty
+- **Expected:** `penalty == 1.0` for one repetition
+
+#### ✅ `test_multiple_repetitions_quadratic_penalty`
+- **Purpose:** Verify penalty grows quadratically
+- **Input:** Same teams repeated 3 times
+- **Expected:** `penalty == 8.0` (2 teams × (3-1)² = 8)
+
+---
+
+### 3.4 `TestWaitingPenalty` Class (3 tests)
+
+Tests for the `calculate_waiting_penalty()` function.
+
+#### ✅ `test_consecutive_matches_zero_penalty`
+- **Purpose:** Verify consecutive matches have zero waiting
+- **Expected:** `penalty == 0.0`
+
+#### ✅ `test_one_gap_has_penalty`
+- **Purpose:** Verify waiting one round has penalty
+- **Expected:** Correct gap calculation
+
+#### ✅ `test_multiple_gaps_quadratic_penalty`
+- **Purpose:** Verify penalty is quadratic in gap size
+- **Input:** Player waits 2 rounds (gap=2)
+- **Expected:** `penalty == 8.0` (2 players × 2² = 8)
+
+---
+
+### 3.5 `TestEarlyCutBonus` Class (4 tests)
+
+Tests for the `calculate_early_cut_bonus()` function.
+
+#### ✅ `test_perfect_cut_at_first_match_high_bonus`
+- **Purpose:** Verify early perfect cut gives high bonus
+- **Expected:** `bonus >= 1000.0`
+
+#### ✅ `test_perfect_cut_later_lower_bonus`
+- **Purpose:** Verify later cuts give lower bonus
+- **Expected:** Bonus decreases with cut position
+
+#### ✅ `test_no_cut_points_zero_bonus`
+- **Purpose:** Verify calendar with no cuts has appropriate bonus
+- **Expected:** `bonus > 0.0` for acceptable cuts
+
+#### ✅ `test_multiple_perfect_cuts_additional_bonus`
+- **Purpose:** Verify multiple cuts give additional bonus
+- **Expected:** `bonus > 1000.0` with additional bonuses
+
+---
+
+### 3.6 `TestCombinedFitness` Class (4 tests)
+
+Tests for the `calculate_fitness()` function.
+
+#### ✅ `test_invalid_calendar_negative_infinity`
+- **Purpose:** Verify invalid calendars get worst fitness
+- **Expected:** Valid calendars have finite fitness
+
+#### ✅ `test_perfect_calendar_high_fitness`
+- **Purpose:** Verify perfect calendars have high fitness
+- **Expected:** `fitness > 1000.0`
+
+#### ✅ `test_fitness_with_custom_weights`
+- **Purpose:** Verify custom weights affect fitness
+- **Expected:** Different weights produce different fitness
+
+#### ✅ `test_fitness_comparison`
+- **Purpose:** Verify better calendars have higher fitness
+- **Expected:** Balanced calendar > unbalanced calendar
+
+---
+
+## Future Test Additions
 
 ### Phase 3: Genetic Algorithm Tests
 - Test population initialization
@@ -336,6 +456,6 @@ uv run pytest tests/ --cov=src --cov-report=html
 ---
 
 **Last Updated:** 2025-11-29  
-**Phase:** 1 - Core Data Structures  
-**Test Count:** 30 tests, all passing ✅
+**Phase:** 2 - Fitness Functions  
+**Test Count:** 51 tests, all passing ✅
 

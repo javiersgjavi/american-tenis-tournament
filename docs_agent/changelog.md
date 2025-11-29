@@ -176,7 +176,66 @@ This file tracks all objectives, implementation progress, and changes made to th
 
 ---
 
+### 2. Fitness Function ✅
+
+**Objective:** Implement all fitness functions to evaluate calendar quality.
+
+**Status:** Completed
+
+**Completed:** 2025-11-29
+
+**What was done:**
+- Implemented `calculate_balance_penalty()` - Penalizes unbalanced match distribution
+- Implemented `calculate_opponent_repetition_penalty()` - Penalizes repeated opponent pairings
+- Implemented `calculate_team_repetition_penalty()` - Penalizes repeated team pairings
+- Implemented `calculate_waiting_penalty()` - Penalizes long waiting periods between matches
+- Implemented `calculate_early_cut_bonus()` - Rewards calendars with early cut points
+- Implemented `calculate_fitness()` - Combined fitness function with configurable weights
+- Created comprehensive test suite with 21 tests (all passing)
+
+**Files created/modified:**
+- `src/genetic_algorithm.py` - Added all fitness functions with detailed documentation
+- `tests/test_fitness.py` - NEW: 21 tests covering all fitness functions
+- `src/__init__.py` - Updated to export fitness functions
+- `docs_agent/implementation.md` - Updated progress tracking
+- `docs_agent/changelog.md` - This file
+
+**Algorithm changes:**
+- No changes to algorithm design
+- Implementation follows specification in `agent.md`
+- All formulas match the documented specifications:
+  - Balance: `(max - min)²`
+  - Repetitions: `Σ(count - 1)²`
+  - Waiting: `Σ(gap²)`
+  - Early cut: `1000 / (first_cut + 1) + bonuses`
+
+**Issues encountered:**
+- Initial test expectations were incorrect for opponent repetition counting
+- Fixed by recalculating expected values manually
+- All tests now pass with correct expectations
+
+**Testing:**
+- 21 new tests added, all passing ✅
+- Total test count: 51 tests (30 from Phase 1 + 21 from Phase 2)
+- Test coverage includes:
+  - Balance penalty (4 tests)
+  - Opponent repetition penalty (3 tests)
+  - Team repetition penalty (3 tests)
+  - Waiting penalty (3 tests)
+  - Early cut bonus (4 tests)
+  - Combined fitness function (4 tests)
+  - Edge cases (empty calendars, perfect balance, multiple repetitions)
+
+**Notes:**
+- TDD methodology successfully applied: wrote tests first, then implementation
+- All fitness functions are well-documented with formulas and examples
+- Configurable weights allow for easy tuning of fitness function
+- Early cut bonus incentivizes solutions that can be stopped early
+- Code is clean, type-hinted, and follows project standards
+
+---
+
 **Last Updated:** 2025-11-29  
-**Current Phase:** Phase 1 Complete - Core Data Structures Implemented  
-**Next Phase:** Phase 2 - Fitness Function
+**Current Phase:** Phase 2 Complete - Fitness Functions Implemented  
+**Next Phase:** Phase 3 - Genetic Algorithm
 

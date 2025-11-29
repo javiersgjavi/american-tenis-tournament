@@ -333,14 +333,14 @@ if random() < mutation_rate:
 - [x] Implement `is_valid_match()` function
 - [x] Add unit tests in `tests/test_match.py` and `tests/test_calendar.py`
 
-### Phase 2: Fitness Function ⏳
-- [ ] Implement `calculate_balance_penalty()`
-- [ ] Implement `calculate_opponent_repetition_penalty()`
-- [ ] Implement `calculate_team_repetition_penalty()`
-- [ ] Implement `calculate_waiting_penalty()`
-- [ ] Implement `calculate_early_cut_bonus()` (NEW - incentivize early cut points)
-- [ ] Implement combined fitness function with all penalties + early cut bonus
-- [ ] Add tests in `tests/test_fitness.py`
+### Phase 2: Fitness Function ✅
+- [x] Implement `calculate_balance_penalty()`
+- [x] Implement `calculate_opponent_repetition_penalty()`
+- [x] Implement `calculate_team_repetition_penalty()`
+- [x] Implement `calculate_waiting_penalty()`
+- [x] Implement `calculate_early_cut_bonus()` (NEW - incentivize early cut points)
+- [x] Implement combined fitness function with all penalties + early cut bonus
+- [x] Add tests in `tests/test_fitness.py`
 
 ### Phase 3: Genetic Algorithm ⏳
 - [ ] Implement `GeneticAlgorithm` class
@@ -380,14 +380,14 @@ if random() < mutation_rate:
 
 ## 🎯 Current Status
 
-**Status:** Phase 1 Complete - Core Data Structures Implemented  
+**Status:** Phase 2 Complete - Fitness Functions Implemented  
 **Last Updated:** 2025-11-29  
-**Next Steps:** Begin implementation of Phase 2 (Fitness Function)
+**Next Steps:** Begin implementation of Phase 3 (Genetic Algorithm)
 
 ## 📊 Implementation Progress
 
 - [x] Phase 1: Core Data Structures ✅
-- [ ] Phase 2: Fitness Function
+- [x] Phase 2: Fitness Function ✅
 - [ ] Phase 3: Genetic Algorithm
 - [ ] Phase 4: Cut Points Detection
 - [ ] Phase 5: Output Formatting
