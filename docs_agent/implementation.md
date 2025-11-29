@@ -365,11 +365,13 @@ if random() < mutation_rate:
 - [x] Implement `print_results()`
 - [ ] Optional: Implement `export_to_csv()` (not implemented)
 
-### Phase 6: Main Script and Notebook ⏳
-- [ ] Create `main.py` with configuration
-- [ ] Create `tournament.ipynb` notebook
-- [ ] Test end-to-end execution
-- [ ] Add documentation and comments
+### Phase 6: Main Script and Notebook ✅
+- [x] Create `main.py` with configuration
+- [x] Add tqdm progress visualization
+- [x] Add parallelization support (joblib)
+- [x] Test end-to-end execution
+- [x] Add comprehensive end-to-end tests (15 tests)
+- [ ] Create `tournament.ipynb` notebook (deferred)
 
 ### Phase 7: Testing and Optimization ⏳
 - [ ] Test with different player counts (4, 6, 7, 8, 10)
@@ -380,9 +382,9 @@ if random() < mutation_rate:
 
 ## 🎯 Current Status
 
-**Status:** Phase 5 Complete - Output Formatting Implemented  
+**Status:** Phase 6 Complete - Main Script and End-to-End Testing Implemented  
 **Last Updated:** 2025-11-29  
-**Next Steps:** Begin implementation of Phase 6 (Main Script and Notebook)
+**Next Steps:** Phase 7 (Testing and Optimization) is optional - core system is complete and functional
 
 ## 📊 Implementation Progress
 
@@ -391,8 +393,8 @@ if random() < mutation_rate:
 - [x] Phase 3: Genetic Algorithm ✅
 - [x] Phase 4: Cut Points Detection ✅
 - [x] Phase 5: Output Formatting ✅
-- [ ] Phase 6: Main Script and Notebook
-- [ ] Phase 7: Testing and Optimization
+- [x] Phase 6: Main Script and End-to-End Testing ✅
+- [ ] Phase 7: Testing and Optimization (Optional)
 
 ## 🔧 Technical Decisions
 
@@ -406,6 +408,8 @@ if random() < mutation_rate:
 - `typing`: For type hints throughout the codebase
 - `random`: For randomization in GA
 - `collections.defaultdict`: For counting repetitions
+- `tqdm`: For progress bars and visualization
+- `joblib`: For parallelization of fitness calculations
 
 ### Design Patterns
 - **Pydantic models** for Match and Calendar classes (validation + clean code)
@@ -416,8 +420,9 @@ if random() < mutation_rate:
 
 ### Performance Considerations
 - Use numpy arrays for calendar representation (fast operations)
-- Cache fitness calculations if needed
-- Consider parallelization for large populations
+- Parallelization implemented using joblib (configurable with n_jobs parameter)
+- Fitness calculations can run in parallel across all CPU cores
+- Progress tracking with tqdm for user feedback
 
 ### Code Quality
 - Use `pydantic` for automatic validation of data structures

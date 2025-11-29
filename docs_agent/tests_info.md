@@ -13,9 +13,9 @@ This document provides detailed information about the test suite, what is being 
 
 ## Test Suite Summary
 
-**Total Tests:** 110
+**Total Tests:** 125
 **Status:** ✅ All passing
-**Coverage:** Phase 1-5 Complete (Core, Fitness, GA, Cut Points, Output)
+**Coverage:** Phase 1-6 Complete (Core, Fitness, GA, Cut Points, Output, End-to-End)
 
 ### Test Files
 
@@ -25,6 +25,7 @@ This document provides detailed information about the test suite, what is being 
 4. `tests/test_genetic_algorithm.py` - 24 tests
 5. `tests/test_cut_points.py` - 17 tests
 6. `tests/test_output.py` - 18 tests
+7. `tests/test_main.py` - 15 tests (NEW)
 
 ---
 
@@ -762,27 +763,104 @@ Integration tests for output with GA.
 
 ---
 
+## 7. End-to-End Tests (`tests/test_main.py`)
+
+### 7.1 `TestEndToEnd` Class (8 tests)
+
+Tests for complete system workflow.
+
+#### ✅ `test_small_tournament_execution`
+- **Purpose:** Verify complete workflow with small tournament
+- **Input:** 4 players, 10 matches, 20 population, 50 generations
+- **Expected:** Valid calendar, all matches valid, fitness improves
+
+#### ✅ `test_medium_tournament_execution`
+- **Purpose:** Test realistic scenario (7 players, 30 matches)
+- **Input:** 7 players, 30 matches, 50 population, 100 generations
+- **Expected:** Valid solution with EXCELLENT/GOOD/ACCEPTABLE quality
+
+#### ✅ `test_fitness_improvement`
+- **Purpose:** Verify GA actually improves fitness over time
+- **Expected:** Final fitness >= initial fitness
+
+#### ✅ `test_solution_has_cut_points`
+- **Purpose:** Verify optimized solutions have cut points
+- **Expected:** At least one cut point (perfect or acceptable)
+
+#### ✅ `test_balance_optimization`
+- **Purpose:** Verify algorithm optimizes for balance
+- **Input:** High balance weight (200.0)
+- **Expected:** Max difference <= 2 matches between players
+
+#### ✅ `test_all_matches_valid`
+- **Purpose:** Verify all generated matches are valid
+- **Expected:** Every match has 4 different players
+
+#### ✅ `test_reproducibility_with_seed`
+- **Purpose:** Verify results are reproducible with same seed
+- **Expected:** Identical results with same random seed
+
+#### ✅ `test_different_player_counts`
+- **Purpose:** Verify algorithm works with different player counts
+- **Input:** 4, 5, 6, 7, 8 players
+- **Expected:** Valid calendars for all player counts
+
+---
+
+### 7.2 `TestMainScriptComponents` Class (2 tests)
+
+Tests for individual components used in main.py.
+
+#### ✅ `test_validate_solution_returns_correct_format`
+- **Purpose:** Verify validate_solution returns expected format
+- **Expected:** Tuple of (bool, str, str) with valid quality level
+
+#### ✅ `test_fitness_history_tracking`
+- **Purpose:** Verify fitness history is properly tracked
+- **Expected:** One entry per generation, all finite values
+
+---
+
+### 7.3 `TestParallelization` Class (2 tests)
+
+Tests for parallelization features.
+
+#### ✅ `test_parallel_execution`
+- **Purpose:** Verify parallel execution works correctly
+- **Input:** n_jobs=2 (2 parallel workers)
+- **Expected:** Valid calendar, correct execution
+
+#### ✅ `test_sequential_vs_parallel_same_seed`
+- **Purpose:** Verify sequential and parallel give same results
+- **Expected:** Identical results with same seed for n_jobs=1 and n_jobs=2
+
+---
+
+### 7.4 `TestEdgeCases` Class (3 tests)
+
+Tests for edge cases and boundary conditions.
+
+#### ✅ `test_minimum_matches`
+- **Purpose:** Test with minimum number of matches (1)
+- **Expected:** Valid calendar with 1 match
+
+#### ✅ `test_many_matches`
+- **Purpose:** Test with large number of matches (100)
+- **Expected:** Valid calendar, all matches valid
+
+#### ✅ `test_minimum_players`
+- **Purpose:** Test with minimum players (4)
+- **Expected:** Valid calendar with 4 players
+
+---
+
 ## Future Test Additions
 
-### Phase 6: Main Script Tests
-- Test population initialization
-- Test selection methods
-- Test crossover operations
-- Test mutation operations
-- Test elitism
-- Test GA convergence
-
-### Phase 4: Cut Points Tests
-- Test perfect cut detection
-- Test acceptable cut detection
-- Test solution validation
-- Test quality criteria
-
-### Phase 5: Output Tests
-- Test match vector to string conversion
-- Test calendar printing
-- Test statistics formatting
-- Test CSV export
+### Phase 7: Optimization Tests (Optional)
+- Performance benchmarks with different configurations
+- Memory usage profiling
+- Scalability tests with very large tournaments
+- Comparison of different fitness weight configurations
 
 ---
 
@@ -803,6 +881,6 @@ Integration tests for output with GA.
 ---
 
 **Last Updated:** 2025-11-29  
-**Phase:** 5 - Output Formatting  
-**Test Count:** 110 tests, all passing ✅
+**Phase:** 6 - Main Script and End-to-End Testing  
+**Test Count:** 125 tests, all passing ✅
 

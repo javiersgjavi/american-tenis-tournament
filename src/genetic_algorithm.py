@@ -6,6 +6,8 @@ Contains GA logic and fitness functions.
 import numpy as np
 import random
 from collections import defaultdict
+from tqdm import tqdm
+from joblib import Parallel, delayed
 
 from .dataclasses import Match, Calendar
 from .utils import generate_random_match, is_valid_match
@@ -438,7 +440,8 @@ class GeneticAlgorithm:
         weight_opponent_rep: float = 10.0,
         weight_team_rep: float = 10.0,
         weight_waiting: float = 5.0,
-        weight_early_cut: float = 50.0
+        weight_early_cut: float = 50.0,
+        n_jobs: int = 1
     ):
         """
         Initialize the Genetic Algorithm.
@@ -456,6 +459,7 @@ class GeneticAlgorithm:
             weight_team_rep: Weight for team repetition penalty
             weight_waiting: Weight for waiting penalty
             weight_early_cut: Weight for early cut bonus
+            n_jobs: Number of parallel jobs for fitness calculation (-1 for all cores, 1 for sequential)
         """
         self.n_players = n_players
         self.n_matches = n_matches
@@ -464,6 +468,7 @@ class GeneticAlgorithm:
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
         self.elitism_size = elitism_size
+        self.n_jobs = n_jobs
         
         # Fitness weights
         self.weight_balance = weight_balance
@@ -558,8 +563,8 @@ class GeneticAlgorithm:
         Returns:
             Tuple of (child1, child2)
         """
-        # Check if crossover should happen
-        if random.random() > self.crossover_rate:
+        # Check if crossover should happen or if we have only 1 match
+        if random.random() > self.crossover_rate or self.n_matches <= 1:
             # No crossover, return copies of parents
             child1_matches = np.copy(parent1.matches)
             child2_matches = np.copy(parent2.matches)
@@ -649,29 +654,50 @@ class GeneticAlgorithm:
         # Track best individual
         best_calendar = None
         best_fitness = float('-inf')
+        generations_without_improvement = 0
         
-        # Evolution loop
-        for generation in range(self.generations):
-            # Calculate fitness for all individuals
-            fitness_scores = [
-                self.calculate_fitness_for_calendar(cal) for cal in population
-            ]
+        # Evolution loop with progress bar
+        pbar = tqdm(range(self.generations), desc="Evolving", disable=not verbose)
+        
+        for generation in pbar:
+            # Calculate fitness for all individuals (parallelized if n_jobs > 1)
+            if self.n_jobs == 1:
+                # Sequential execution
+                fitness_scores = [
+                    self.calculate_fitness_for_calendar(cal) for cal in population
+                ]
+            else:
+                # Parallel execution
+                fitness_scores = Parallel(n_jobs=self.n_jobs, prefer="threads")(
+                    delayed(self.calculate_fitness_for_calendar)(cal) for cal in population
+                )
             
             # Update best individual
             gen_best_idx = fitness_scores.index(max(fitness_scores))
             gen_best_fitness = fitness_scores[gen_best_idx]
+            gen_avg_fitness = sum(fitness_scores) / len(fitness_scores)
             
             if gen_best_fitness > best_fitness:
                 best_fitness = gen_best_fitness
                 best_calendar = population[gen_best_idx]
+                generations_without_improvement = 0
+                
+                # Check if we found a good solution
+                is_valid, quality, _ = validate_solution(best_calendar)
+                if verbose and is_valid:
+                    tqdm.write(f"🎯 Generation {generation + 1}: Found {quality} solution! Fitness: {best_fitness:.2f}")
+            else:
+                generations_without_improvement += 1
             
             # Track fitness history
             self.best_fitness_history.append(best_fitness)
             
-            # Print progress
-            if verbose and (generation % 10 == 0 or generation == self.generations - 1):
-                print(f"Generation {generation + 1}/{self.generations} - "
-                      f"Best fitness: {best_fitness:.2f}")
+            # Update progress bar
+            pbar.set_postfix({
+                'Best': f'{best_fitness:.2f}',
+                'Avg': f'{gen_avg_fitness:.2f}',
+                'No Improv': generations_without_improvement
+            })
             
             # Create new generation
             new_population = []
@@ -710,8 +736,10 @@ class GeneticAlgorithm:
             # Replace old population
             population = new_population[:self.population_size]
         
+        pbar.close()
+        
         if verbose:
-            print(f"\nOptimization completed!")
-            print(f"Best fitness achieved: {best_fitness:.2f}")
+            print(f"\n✓ Optimization completed!")
+            print(f"  Best fitness achieved: {best_fitness:.2f}")
         
         return best_calendar
