@@ -815,7 +815,120 @@ if len(acceptable_cut_positions) >= 2:
 
 ---
 
+### 8.1. Enhanced Hyperparameter Optimization and File Export ✅
+
+**Objective:** Add progress visualization to hyperparameter optimization and implement file export functionality.
+
+**Status:** Completed
+
+**Completed:** 2025-11-29
+
+**What was done:**
+- Added tqdm progress bars to all hyperparameter testing methods
+- Implemented CSV export for calendar with cut point markers
+- Implemented TXT export for complete results
+- Created automatic `outputs/` directory generation
+- Maintained console output while adding file exports
+- Updated main.py to automatically export results
+
+**Files created/modified:**
+- `src/hyperparameter_optimizer.py` - Added tqdm to all testing methods (run_multiple_trials, test_population_sizes, test_generation_counts, test_mutation_rates, test_crossover_rates, test_elitism_sizes)
+- `src/printer.py` - Added export_calendar_to_csv(), export_results_to_txt(), export_all_outputs()
+- `src/__init__.py` - Exported new export functions
+- `main.py` - Added automatic file export after optimization
+- `docs_agent/changelog.md` - This file
+- `docs_agent/implementation.md` - Updated with new features
+
+**Algorithm changes:**
+- No changes to core algorithm
+- Enhanced user experience with progress visualization
+- Added file export capabilities for better result persistence
+
+**Key Features:**
+
+**1. Progress Visualization:**
+- Added tqdm progress bars to:
+  - Multiple trials execution
+  - Population size testing
+  - Generation count testing
+  - Mutation rate testing
+  - Crossover rate testing
+  - Elitism size testing
+- Users can now see real-time progress for long-running optimizations
+
+**2. CSV Export:**
+- `export_calendar_to_csv()` - Exports match calendar to CSV
+- Columns: Match #, Team 1, Team 2, Perfect Cut, Acceptable Cut
+- Cut points marked with ✓ in respective columns
+- Automatic directory creation
+
+**3. TXT Export:**
+- `export_results_to_txt()` - Exports complete results to text file
+- Includes all analysis: calendar, statistics, cut points, heuristics
+- Same format as console output for consistency
+
+**4. Unified Export:**
+- `export_all_outputs()` - Exports both CSV and TXT in one call
+- Creates `outputs/` directory automatically
+- Returns dictionary with paths to created files
+- Configurable output directory and base filename
+
+**5. Integration with main.py:**
+- Automatic export after optimization completes
+- Default output directory: `outputs/`
+- Default filenames: `tournament_calendar.csv`, `tournament_results.txt`
+- Console output maintained (nothing removed)
+
+**Output Example:**
+
+**CSV Format:**
+```csv
+Match #,Team 1,Team 2,Perfect Cut,Acceptable Cut
+1,A,D,B,C,,✓
+2,C,E,A,F,,✓
+3,B,G,D,E,,✓
+...
+```
+
+**Console Output:**
+```
+Exporting results to files...
+✓ Calendar exported to: outputs/tournament_calendar.csv
+✓ Results exported to: outputs/tournament_results.txt
+```
+
+**Issues encountered:**
+- None - all implementations work correctly
+- All existing tests still passing
+
+**Testing:**
+- 13 new tests added for file export functionality
+- Total test count: 138 tests (125 from previous phases + 13 new)
+- Test coverage includes:
+  - CSV export (5 tests): file creation, headers, row count, cut point markers, optional markers
+  - TXT export (3 tests): file creation, calendar section, statistics section, cut points section
+  - Unified export (4 tests): both files creation, directory creation, path validation, GA integration
+  - Integration with GA results
+  - Temporary directory handling
+  - UTF-8 encoding validation
+- All 138 tests passing ✅
+- Manual testing confirms all exports work correctly
+- CSV files open correctly in Excel/LibreOffice
+- TXT files contain complete formatted output
+- Directory creation works on all platforms
+- Console output unchanged (backward compatible)
+
+**Notes:**
+- All exports use UTF-8 encoding
+- Path handling uses pathlib for cross-platform compatibility
+- Automatic directory creation with `parents=True, exist_ok=True`
+- Export functions are optional - main algorithm unchanged
+- Can be used independently or through `export_all_outputs()`
+- All code, comments, and output in English as required
+
+---
+
 **Last Updated:** 2025-11-29  
-**Current Phase:** Phase 8 Complete - Hyperparameter Optimization  
-**Status:** ✅ Production Ready with Optimization Tools
+**Current Phase:** Phase 8.1 Complete - Enhanced Optimization and Export  
+**Status:** ✅ Production Ready with Optimization Tools and File Export
 

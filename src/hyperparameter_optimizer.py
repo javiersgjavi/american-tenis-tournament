@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 from dataclasses import dataclass, asdict
 import numpy as np
+from tqdm import tqdm
 from src.genetic_algorithm import GeneticAlgorithm
 from src.dataclasses import Calendar
 
@@ -264,7 +265,9 @@ class HyperparameterOptimizer:
             List of OptimizationResults
         """
         results = []
-        for trial in range(n_trials):
+        trial_iterator = tqdm(range(n_trials), desc="Trials", disable=not verbose)
+        
+        for trial in trial_iterator:
             if verbose:
                 print(f"\n{'='*60}")
                 print(f"Trial {trial + 1}/{n_trials}")
@@ -304,7 +307,9 @@ class HyperparameterOptimizer:
             print("="*60)
         
         results = []
-        for size in sizes:
+        size_iterator = tqdm(sizes, desc="Population sizes", disable=not verbose)
+        
+        for size in size_iterator:
             if verbose:
                 print(f"\n--- Testing population_size = {size} ---")
             
@@ -331,7 +336,9 @@ class HyperparameterOptimizer:
             print("="*60)
         
         results = []
-        for count in counts:
+        count_iterator = tqdm(counts, desc="Generation counts", disable=not verbose)
+        
+        for count in count_iterator:
             if verbose:
                 print(f"\n--- Testing generations = {count} ---")
             
@@ -358,7 +365,9 @@ class HyperparameterOptimizer:
             print("="*60)
         
         results = []
-        for rate in rates:
+        rate_iterator = tqdm(rates, desc="Mutation rates", disable=not verbose)
+        
+        for rate in rate_iterator:
             if verbose:
                 print(f"\n--- Testing mutation_rate = {rate} ---")
             
@@ -385,7 +394,9 @@ class HyperparameterOptimizer:
             print("="*60)
         
         results = []
-        for rate in rates:
+        rate_iterator = tqdm(rates, desc="Crossover rates", disable=not verbose)
+        
+        for rate in rate_iterator:
             if verbose:
                 print(f"\n--- Testing crossover_rate = {rate} ---")
             
@@ -412,7 +423,9 @@ class HyperparameterOptimizer:
             print("="*60)
         
         results = []
-        for size in sizes:
+        size_iterator = tqdm(sizes, desc="Elitism sizes", disable=not verbose)
+        
+        for size in size_iterator:
             if verbose:
                 print(f"\n--- Testing elitism_size = {size} ---")
             

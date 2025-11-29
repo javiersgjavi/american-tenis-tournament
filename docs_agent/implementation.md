@@ -92,7 +92,9 @@ Handles all output formatting and visualization.
 - `print_cut_points()` - Print ALL perfect and acceptable cut points (no truncation)
 - `print_heuristic_details()` - Print detailed analysis of all heuristic objectives
 - `print_results()` - Print complete formatted output with detailed analysis
-- `export_to_csv()` - Export calendar to CSV file (optional, not implemented)
+- `export_calendar_to_csv()` - Export calendar to CSV file with cut point markers
+- `export_results_to_txt()` - Export complete results to TXT file
+- `export_all_outputs()` - Export both CSV and TXT files to outputs/ directory
 
 ### 5. `main.py` (root directory)
 
@@ -375,7 +377,12 @@ if random() < mutation_rate:
 - [x] Implement `print_statistics()`
 - [x] Implement `print_cut_points()`
 - [x] Implement `print_results()`
-- [ ] Optional: Implement `export_to_csv()` (not implemented)
+- [x] Implement `export_calendar_to_csv()`
+- [x] Implement `export_results_to_txt()`
+- [x] Implement `export_all_outputs()`
+- [x] Add tests for CSV export (5 tests)
+- [x] Add tests for TXT export (3 tests)
+- [x] Add tests for unified export (4 tests)
 
 ### Phase 6: Main Script and Notebook ✅
 - [x] Create `main.py` with configuration
@@ -410,9 +417,9 @@ if random() < mutation_rate:
 
 ## 🎯 Current Status
 
-**Status:** Phase 8 Complete - Hyperparameter Optimization Framework Implemented  
+**Status:** Phase 8.1 Complete - Enhanced Optimization and File Export  
 **Last Updated:** 2025-11-29  
-**Next Steps:** Project ready for production use with optimization tools available
+**Next Steps:** Project ready for production use with optimization tools and file export
 
 ## 📊 Implementation Progress
 
@@ -425,6 +432,7 @@ if random() < mutation_rate:
 - [x] Phase 7: Testing and Optimization ✅
 - [x] Phase 7.1: Enhanced Output and Distribution Optimization ✅
 - [x] Phase 8: Hyperparameter Optimization ✅
+- [x] Phase 8.1: Enhanced Optimization and File Export ✅
 
 ## 🔧 Technical Decisions
 
@@ -924,6 +932,149 @@ EARLY_STOPPING_PATIENCE = 50
 
 ---
 
-**Version:** 1.2  
+## 📤 File Export Features (Phase 8.1)
+
+### CSV Export
+
+**Function:** `export_calendar_to_csv(calendar, output_path, include_cut_points=True)`
+
+**Features:**
+- Exports match calendar in CSV format
+- Columns: Match #, Team 1, Team 2, Perfect Cut, Acceptable Cut
+- Cut points marked with ✓ symbol
+- Automatic directory creation
+- UTF-8 encoding for universal compatibility
+
+**CSV Format Example:**
+```csv
+Match #,Team 1,Team 2,Perfect Cut,Acceptable Cut
+1,A,D,B,C,,✓
+2,C,E,A,F,,✓
+3,B,G,D,E,,✓
+10,A,B,C,D,✓,✓
+```
+
+**Use Cases:**
+- Import into Excel/Google Sheets for analysis
+- Share with tournament organizers
+- Archive tournament data
+- Generate custom visualizations
+
+### TXT Export
+
+**Function:** `export_results_to_txt(calendar, output_path, include_full_analysis=True)`
+
+**Features:**
+- Exports complete formatted results
+- Includes all sections: calendar, statistics, cut points, heuristics
+- Same format as console output
+- UTF-8 encoding
+- Automatic directory creation
+
+**Content Includes:**
+- Match calendar with numbering
+- Matches per player statistics
+- Perfect and acceptable cut points
+- Detailed heuristic analysis:
+  - Waiting times per player
+  - Team repetitions
+  - Opponent repetitions
+  - Calendar flexibility metrics
+
+**Use Cases:**
+- Archive complete analysis
+- Share detailed results via email
+- Documentation for tournament records
+- Offline review of results
+
+### Unified Export
+
+**Function:** `export_all_outputs(calendar, output_dir="outputs", base_filename="tournament")`
+
+**Features:**
+- Exports both CSV and TXT in one call
+- Creates output directory automatically
+- Returns dictionary with file paths
+- Configurable directory and filename
+
+**Return Value:**
+```python
+{
+    'csv': Path('outputs/tournament_calendar.csv'),
+    'txt': Path('outputs/tournament_results.txt')
+}
+```
+
+**Usage Example:**
+```python
+from src import export_all_outputs
+
+# Export with default settings
+files = export_all_outputs(calendar)
+
+# Export with custom directory and filename
+files = export_all_outputs(
+    calendar,
+    output_dir="results/2025-11-29",
+    base_filename="padel_tournament"
+)
+
+print(f"CSV: {files['csv']}")
+print(f"TXT: {files['txt']}")
+```
+
+### Integration with main.py
+
+The main script automatically exports results after optimization:
+
+```python
+# Automatic export after optimization
+exported_files = export_all_outputs(
+    best_calendar,
+    output_dir="outputs",
+    base_filename="tournament"
+)
+
+print(f"✓ Calendar exported to: {exported_files['csv']}")
+print(f"✓ Results exported to: {exported_files['txt']}")
+```
+
+**Output Directory Structure:**
+```
+american-tenis-tournament/
+├── outputs/
+│   ├── tournament_calendar.csv
+│   └── tournament_results.txt
+├── src/
+├── tests/
+└── main.py
+```
+
+### Progress Visualization Enhancements
+
+**Added tqdm progress bars to:**
+
+1. **Multiple Trials:** Shows progress across trial repetitions
+2. **Population Size Testing:** Progress through different population sizes
+3. **Generation Count Testing:** Progress through different generation counts
+4. **Mutation Rate Testing:** Progress through different mutation rates
+5. **Crossover Rate Testing:** Progress through different crossover rates
+6. **Elitism Size Testing:** Progress through different elitism sizes
+
+**Example Output:**
+```
+Population sizes: 100%|██████████| 5/5 [02:30<00:00, 30.0s/it]
+Trials: 100%|██████████| 3/3 [00:45<00:00, 15.0s/it]
+```
+
+**Benefits:**
+- Real-time progress feedback
+- Estimated time remaining
+- Better user experience for long optimizations
+- Easy to monitor multiple test runs
+
+---
+
+**Version:** 1.3  
 **Last Modified:** 2025-11-29
 

@@ -3,7 +3,10 @@ Output formatting functions for American Padel Tournament.
 Handles printing calendars, statistics, and results.
 """
 
+import csv
 import numpy as np
+from pathlib import Path
+from io import StringIO
 from .dataclasses import Calendar, Match
 from .genetic_algorithm import detect_cut_points, validate_solution
 
@@ -375,4 +378,115 @@ def print_results(
     print("\n" + "="*60)
     print("END OF RESULTS")
     print("="*60 + "\n")
+
+
+def export_calendar_to_csv(
+    calendar: Calendar,
+    output_path: str | Path,
+    include_cut_points: bool = True
+) -> None:
+    """
+    Export calendar to CSV file with optional cut point markers.
+    
+    Args:
+        calendar: Calendar to export
+        output_path: Path to output CSV file
+        include_cut_points: Whether to include cut point markers
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Detect cut points if needed
+    perfect_cuts, acceptable_cuts = [], []
+    if include_cut_points:
+        perfect_cuts, acceptable_cuts = detect_cut_points(calendar)
+    
+    # Write CSV
+    with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        
+        # Header
+        writer.writerow(['Match #', 'Team 1', 'Team 2', 'Perfect Cut', 'Acceptable Cut'])
+        
+        # Matches
+        for i, match_vector in enumerate(calendar.matches):
+            match_num = i + 1
+            match_str = match_vector_to_string(match_vector, calendar.n_players)
+            
+            # Parse teams from string
+            parts = match_str.split(' vs ')
+            team1 = parts[0].strip('()')
+            team2 = parts[1].strip('()')
+            
+            # Check if this is a cut point
+            is_perfect = '✓' if match_num in perfect_cuts else ''
+            is_acceptable = '✓' if match_num in acceptable_cuts else ''
+            
+            writer.writerow([match_num, team1, team2, is_perfect, is_acceptable])
+
+
+def export_results_to_txt(
+    calendar: Calendar,
+    output_path: str | Path,
+    include_full_analysis: bool = True
+) -> None:
+    """
+    Export complete results to TXT file.
+    
+    Args:
+        calendar: Calendar to export
+        output_path: Path to output TXT file
+        include_full_analysis: Whether to include full heuristic analysis
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Capture all print output
+    import sys
+    old_stdout = sys.stdout
+    sys.stdout = buffer = StringIO()
+    
+    try:
+        # Print all results (this will go to buffer)
+        print_results(calendar)
+    finally:
+        # Restore stdout
+        sys.stdout = old_stdout
+    
+    # Write to file
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(buffer.getvalue())
+
+
+def export_all_outputs(
+    calendar: Calendar,
+    output_dir: str | Path = "outputs",
+    base_filename: str = "tournament"
+) -> dict[str, Path]:
+    """
+    Export all outputs (CSV and TXT) to the specified directory.
+    
+    Args:
+        calendar: Calendar to export
+        output_dir: Directory for output files (default: "outputs")
+        base_filename: Base name for output files (default: "tournament")
+        
+    Returns:
+        Dictionary with paths to created files
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate filenames
+    csv_path = output_dir / f"{base_filename}_calendar.csv"
+    txt_path = output_dir / f"{base_filename}_results.txt"
+    
+    # Export files
+    export_calendar_to_csv(calendar, csv_path, include_cut_points=True)
+    export_results_to_txt(calendar, txt_path, include_full_analysis=True)
+    
+    return {
+        'csv': csv_path,
+        'txt': txt_path
+    }
 

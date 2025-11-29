@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 *.txt
 
+# Output files
+outputs/
+optimization_results/
+
 # C extensions
 *.so
 

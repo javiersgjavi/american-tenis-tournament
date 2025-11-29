@@ -22,6 +22,9 @@ from .printer import (
     print_cut_points,
     print_heuristic_details,
     print_results,
+    export_calendar_to_csv,
+    export_results_to_txt,
+    export_all_outputs,
 )
 from .hyperparameter_optimizer import (
     HyperparameterConfig,
@@ -49,6 +52,9 @@ __all__ = [
     'print_cut_points',
     'print_heuristic_details',
     'print_results',
+    'export_calendar_to_csv',
+    'export_results_to_txt',
+    'export_all_outputs',
     'HyperparameterConfig',
     'OptimizationResult',
     'HyperparameterOptimizer',

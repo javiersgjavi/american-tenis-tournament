@@ -4,7 +4,7 @@ This script runs the genetic algorithm and displays the results.
 """
 
 from src.genetic_algorithm import GeneticAlgorithm, validate_solution
-from src.printer import print_results
+from src.printer import print_results, export_all_outputs
 
 
 def main():
@@ -160,6 +160,17 @@ def main():
     print("\n" + "="*70)
     print("OPTIMIZATION COMPLETE".center(70))
     print("="*70 + "\n")
+    
+    # ========================================================================
+    # EXPORT RESULTS TO FILES
+    # ========================================================================
+    
+    print("Exporting results to files...")
+    exported_files = export_all_outputs(best_calendar, output_dir="outputs", base_filename="tournament")
+    
+    print(f"✓ Calendar exported to: {exported_files['csv']}")
+    print(f"✓ Results exported to: {exported_files['txt']}")
+    print()
 
 
 if __name__ == "__main__":

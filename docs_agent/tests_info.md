@@ -13,9 +13,9 @@ This document provides detailed information about the test suite, what is being 
 
 ## Test Suite Summary
 
-**Total Tests:** 125
+**Total Tests:** 138
 **Status:** ✅ All passing
-**Coverage:** Phase 1-6 Complete (Core, Fitness, GA, Cut Points, Output, End-to-End)
+**Coverage:** Phase 1-6 Complete (Core, Fitness, GA, Cut Points, Output, End-to-End, File Export)
 
 ### Test Files
 
@@ -24,8 +24,8 @@ This document provides detailed information about the test suite, what is being 
 3. `tests/test_fitness.py` - 21 tests
 4. `tests/test_genetic_algorithm.py` - 24 tests
 5. `tests/test_cut_points.py` - 17 tests
-6. `tests/test_output.py` - 18 tests
-7. `tests/test_main.py` - 15 tests (NEW)
+6. `tests/test_output.py` - 31 tests (18 original + 13 export tests)
+7. `tests/test_main.py` - 15 tests
 
 ---
 
@@ -880,7 +880,93 @@ Tests for edge cases and boundary conditions.
 
 ---
 
+## 8. File Export Tests (`tests/test_output.py` - Export Section)
+
+### 8.1 `TestCSVExport` Class (5 tests)
+
+Tests for CSV export functionality.
+
+#### ✅ `test_export_calendar_to_csv_creates_file`
+- **Purpose:** Verify CSV export creates a file
+- **Expected:** File exists and is valid
+
+#### ✅ `test_csv_has_correct_headers`
+- **Purpose:** Verify CSV has correct column headers
+- **Expected:** Headers include Match #, Team 1, Team 2, Perfect Cut, Acceptable Cut
+
+#### ✅ `test_csv_has_correct_number_of_rows`
+- **Purpose:** Verify CSV has correct number of rows (header + matches)
+- **Expected:** Row count matches calendar size + 1
+
+#### ✅ `test_csv_marks_cut_points`
+- **Purpose:** Verify cut points are marked with ✓ in CSV
+- **Expected:** At least one cut point marker present
+
+#### ✅ `test_csv_without_cut_points`
+- **Purpose:** Verify CSV export without cut point markers
+- **Expected:** No ✓ markers when include_cut_points=False
+
+---
+
+### 8.2 `TestTXTExport` Class (3 tests)
+
+Tests for TXT export functionality.
+
+#### ✅ `test_export_results_to_txt_creates_file`
+- **Purpose:** Verify TXT export creates a file
+- **Expected:** File exists and is valid
+
+#### ✅ `test_txt_contains_calendar_section`
+- **Purpose:** Verify TXT contains calendar section
+- **Expected:** Output includes MATCH CALENDAR, Match 1:, vs
+
+#### ✅ `test_txt_contains_statistics_section`
+- **Purpose:** Verify TXT contains statistics section
+- **Expected:** Output includes STATISTICS, Player
+
+#### ✅ `test_txt_contains_cut_points_section`
+- **Purpose:** Verify TXT contains cut points section
+- **Expected:** Output includes CUT POINTS
+
+---
+
+### 8.3 `TestUnifiedExport` Class (4 tests)
+
+Tests for unified export functionality.
+
+#### ✅ `test_export_all_outputs_creates_both_files`
+- **Purpose:** Verify export_all_outputs creates both CSV and TXT
+- **Expected:** Both files exist and are valid
+
+#### ✅ `test_export_all_outputs_creates_directory`
+- **Purpose:** Verify output directory is created if it doesn't exist
+- **Expected:** Directory is created automatically
+
+#### ✅ `test_export_all_outputs_returns_correct_paths`
+- **Purpose:** Verify correct file paths are returned
+- **Expected:** Paths match expected format with base filename
+
+#### ✅ `test_export_all_outputs_with_ga_result`
+- **Purpose:** Verify export works with GA-generated calendars
+- **Expected:** Both files created with content > 0 bytes
+
+---
+
+## Test Coverage Summary
+
+### ✅ File Export Features
+- CSV export with cut point markers
+- TXT export with complete results
+- Unified export (CSV + TXT)
+- Automatic directory creation
+- Correct file naming and paths
+- Integration with GA results
+- UTF-8 encoding
+- Temporary directory handling in tests
+
+---
+
 **Last Updated:** 2025-11-29  
-**Phase:** 6 - Main Script and End-to-End Testing  
-**Test Count:** 125 tests, all passing ✅
+**Phase:** 8.1 - Enhanced Optimization and File Export  
+**Test Count:** 138 tests, all passing ✅
 
