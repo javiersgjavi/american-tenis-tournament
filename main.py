@@ -21,7 +21,7 @@ def main():
     
     # Tournament parameters
     N_PLAYERS = 7           # Number of players
-    N_MATCHES = 50          # Number of matches to generate
+    N_MATCHES = 20          # Number of matches to generate
     
     # Genetic Algorithm parameters
     POPULATION_SIZE = 100   # Size of the population

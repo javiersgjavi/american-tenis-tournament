@@ -23,6 +23,11 @@ from .printer import (
     print_heuristic_details,
     print_results,
 )
+from .hyperparameter_optimizer import (
+    HyperparameterConfig,
+    OptimizationResult,
+    HyperparameterOptimizer,
+)
 
 __all__ = [
     'Match',
@@ -44,4 +49,7 @@ __all__ = [
     'print_cut_points',
     'print_heuristic_details',
     'print_results',
+    'HyperparameterConfig',
+    'OptimizationResult',
+    'HyperparameterOptimizer',
 ]
