@@ -1,379 +1,81 @@
-# American Padel Tournament - Genetic Algorithm
+# Project Context: American Tournament Generator
 
-## 📋 Project Overview
+This document serves as the source of truth and context for AI Agents (LLMs) working on this repository. It defines both the business logic (rules of American tennis/padel) and the technical implementation (genetic algorithm).
 
-This project implements a calendar generator for American-style padel tournaments using genetic algorithms. The goal is to create an optimized list of matches that balances player participation and minimizes unwanted repetitions.
+## 🎾 Domain Context (Business Logic)
 
-## 🎯 Main Objective
+### What is an "American Tournament"?
+It is a popular social competition format in racquet sports (Tennis, Padel, Pickleball) designed for individual groups where **fixed partners do not exist**.
 
-Generate a match calendar that:
-- Balances the number of matches per player
-- Minimizes team repetitions
-- Minimizes opponent repetitions
-- Minimizes waiting rounds for players
-- Identifies optimal cut points to finish the tournament
+**Fundamental Rules:**
+1.  **Individuality:** Players register individually, not as pairs.
+2.  **Dynamic Rotation:** In every match, a player changes their partner and opponents.
+3.  **Social Objective:** The goal is to maximize the "mix". A player should play with and against as many different people as possible.
+4.  **Scoring:** Although played in pairs (2 vs 2), points are added to each player's individual ranking.
+5.  **Physical Constraint:** In a group of $N$ players with $C$ available courts, only $C \times 4$ people can play simultaneously. The rest must wait.
 
-## 🧬 Chromosome Representation
+### The Mathematical Problem
+Organizing this manually is extremely difficult because several objectives conflict:
+*   No one should wait too long on the bench.
+*   Partners should not repeat (A and B shouldn't play together 3 times in a row).
+*   Opponents should not repeat.
+*   By the end of the tournament, everyone must have played the same number of matches.
 
-### Match Structure
-Each match consists of two teams:
-- Format: `(A,B) vs (C,D)`
-- Example: `(A,D) vs (B,C)`
-
-### Chromosome Encoding
-A chromosome represents a complete calendar (list of matches).
-
-**Proposed encoding:**
-- Matrix of size `(N, match_representation)`
-  - `N` = total number of matches to play
-  - `match_representation` = one-hot encoding vector representing players in a match
-
-**Example with 4 players (A,B,C,D):**
-- Match (A,B) vs (C,D) → `[1,1,0,0, 0,0,1,1]`
-  - First 4 bits: team 1 (A,B)
-  - Next 4 bits: team 2 (C,D)
-
-**Example with 7 players (A,B,C,D,E,F,G):**
-- Match (A,D) vs (B,C) → `[1,0,0,1,0,0,0, 0,1,1,0,0,0,0]`
-  - First 7 bits: team 1 (A,D)
-  - Next 7 bits: team 2 (B,C)
-
-**Complete chromosome for N=3 matches:**
-```
-[
-  [1,1,0,0,0,0,0, 0,0,1,1,0,0,0],  # Match 1: (A,B) vs (C,D)
-  [1,0,0,1,0,0,0, 0,1,0,0,1,0,0],  # Match 2: (A,D) vs (B,E)
-  [0,0,1,0,1,0,0, 0,0,0,1,0,1,0]   # Match 3: (C,E) vs (D,F)
-]
-```
-
-**Validation requirements:**
-- Each match must have exactly 4 different players
-- Each team must have exactly 2 players
-- No player can appear in both teams of the same match
-
-## 📊 Fitness Function (Heuristics)
-
-The fitness evaluates the quality of a calendar based on 6 main criteria (5 penalties + 1 bonus):
-
-### 0. **Valid Match Constraint** (Hard Constraint)
-- **Objective:** Every match must have exactly 4 different players
-- **Validation:** Each match vector must have exactly 4 ones (2 in each team)
-- **Penalty:** INFINITE penalty if a match has repeated players or invalid structure
-- **Note:** This is a hard constraint that must always be satisfied
-
-### 1. **Balance of Matches per Player** (HIGH PRIORITY)
-- **Objective:** All players should play a similar number of matches
-- **Penalty:** Strong if the difference between players > 1
-- **Metric:** Standard deviation or max-min difference
-- **Weight:** This is the MOST IMPORTANT criterion (highest weight)
-- **Formula:** `penalty = (max_matches - min_matches)^2`
-
-### 2. **Opponent Repetition**
-- **Objective:** Minimize players facing each other repeatedly
-- **Penalty:** Proportional to the number of times they face each other
-- **Metric:** Sum of opponent pair repetitions
-- **Formula:** `penalty = sum((repetitions - 1)^2 for each opponent pair)`
-
-### 3. **Team Repetition**
-- **Objective:** Minimize players playing together repeatedly
-- **Penalty:** Strong if a team repeats too many times
-- **Metric:** Quadratic sum of team repetitions
-- **Formula:** `penalty = sum((repetitions - 1)^2 for each team pair)`
-
-### 4. **Player Waiting Rounds**
-- **Objective:** Minimize the number of consecutive matches a player waits without playing
-- **Penalty:** Penalize long waiting periods between matches for each player
-- **Metric:** Sum of waiting rounds for all players
-- **Note:** Matches are played sequentially (one at a time)
-- **Formula:** `penalty = sum(waiting_rounds^2 for each player)`
-- **Example:** If player A plays match 1, then waits matches 2,3,4, then plays match 5, they waited 3 rounds
-
-### 5. **Early Cut Points Bonus** (IMPORTANT)
-- **Objective:** Incentivize calendars that have cut points as early as possible
-- **Bonus:** Reward solutions where the first cut point appears early in the calendar
-- **Rationale:** It's better to have a usable tournament after 10 matches than after 30
-- **Formula:** `bonus = 1000.0 / (first_perfect_cut_index + 1) + additional_bonuses`
-- **Note:** This is a POSITIVE contribution to fitness (bonus, not penalty)
-- **Example:** First perfect cut at match 7 is much better than at match 28
-
-### Fitness Formula
-```python
-fitness = -(
-    w0 * penalty_invalid_matches +      # Infinite if invalid
-    w1 * penalty_balance +               # HIGHEST weight
-    w2 * penalty_opponent_repetition +
-    w3 * penalty_team_repetition +
-    w4 * penalty_waiting_rounds
-) + w5 * bonus_early_cuts                # POSITIVE bonus
-```
-
-**Recommended weights:**
-- `w0 = float('inf')` (hard constraint)
-- `w1 = 100.0` (very high - most important)
-- `w2 = 10.0` (medium)
-- `w3 = 10.0` (medium)
-- `w4 = 5.0` (low-medium)
-- `w5 = 50.0` (high - encourage early cut points)
-
-## 🔍 Cut Points
-
-### Definition
-A cut point is an index in the calendar where the tournament can be finished while maintaining balance.
-
-**IMPORTANT:** The earlier a cut point appears, the better. A tournament that can be stopped after 10 matches is more flexible than one requiring 30 matches.
-
-### Types of Cuts
-
-**Perfect Cut:**
-- Maximum difference in matches between players = 0
-- All players have played exactly the same number of matches
-- **Example:** After match 8, all players have played 4 matches
-- **Ideal:** First perfect cut should appear in the first 30% of the calendar
-
-**Acceptable Cut:**
-- Maximum difference in matches between players ≤ 1
-- Almost all players have played the same number of matches
-- **Example:** After match 12, some played 5 and others 6
-- **Minimum requirement:** At least one cut point should exist before 60% of the calendar
-
-### Detection
-After generating the calendar, iterate through each index and calculate:
-```python
-matches_per_player = count_matches_until(index)
-max_difference = max(matches_per_player) - min(matches_per_player)
-
-if max_difference == 0:
-    perfect_cuts.append(index)
-elif max_difference <= 1:
-    acceptable_cuts.append(index)
-```
-
-### Quality Criteria
-- **Excellent:** First perfect cut in first 30% of matches
-- **Good:** First perfect cut in first 50% of matches
-- **Acceptable:** First acceptable cut in first 60% of matches
-- **Poor:** No cut points until after 60% of matches (solution rejected)
-
-## 🧪 Genetic Algorithm
-
-### Configurable Parameters (Optimized)
-
-These parameters have been optimized through systematic hyperparameter testing:
-
-```python
-N_PLAYERS = 7            # Number of players
-N_MATCHES = 20           # Matches to generate (optimal for typical tournaments)
-POPULATION_SIZE = 100    # Population size (optimal: 100-150 for medium tournaments)
-GENERATIONS = 200        # Number of generations (optimal with early stopping)
-MUTATION_RATE = 0.15     # Mutation probability (optimal: 0.15 for best balance and cut points)
-CROSSOVER_RATE = 0.8     # Crossover probability (optimal: 0.8 for good recombination)
-ELITISM_SIZE = 2         # Number of best individuals to keep (optimal: 2-3)
-EARLY_STOPPING_PATIENCE = 20  # Stop if no improvement (optimal: 20-30 generations)
-```
-
-**Optimization Results Summary:**
-- **Population:** 100-150 provides best balance between quality and speed
-- **Mutation Rate:** 0.15 provides excellent balance (1.0) and many cut points (25.7 average)
-- **Crossover Rate:** 0.8 is optimal for good recombination without destroying structure
-- **Elitism:** 2-3 preserves quality without stagnation
-- **Early Stopping:** Reduces execution time by ~69% while maintaining solution quality
-
-For detailed analysis and optimization results, run:
-```bash
-python run_hyperparameter_optimization.py --scenario medium
-python analyze_results.py --file optimization_results/medium/medium_tournament_results.json
-```
-
-### Genetic Operators
-
-**1. Initialization:**
-- Generate initial population of random valid calendars
-- Each calendar has N_MATCHES matches
-- Each match must have exactly 4 different players
-- Matrix representation: `(N_MATCHES, 2 * N_PLAYERS)`
-
-**2. Selection:**
-- Tournament selection (binary or k-tournament)
-- Roulette wheel selection
-- Select individuals with better fitness for reproduction
-
-**3. Crossover:**
-- Single-point, two-point, or uniform crossover
-- Exchange segments of calendars between parents
-- **Important:** Validate that resulting matches are valid (4 different players)
-- If invalid matches are created, repair them or regenerate
-
-**4. Mutation:**
-Possible operations:
-- Swap two players within a match (keeping teams valid)
-- Swap the order of two matches in the calendar
-- Replace a complete match with a random valid one
-- Swap players between two different matches
-- **Important:** Always maintain the constraint of 4 different players per match
-
-**5. Replacement:**
-- Elitism: keep the best individuals from previous generation
-- Replace the rest with new generation
-- Ensures the best solution never gets worse
-
-### Algorithm Flow
-```
-1. Initialize random population
-2. For each generation:
-   a. Evaluate fitness of all individuals
-   b. Select parents
-   c. Apply crossover
-   d. Apply mutation
-   e. Create new generation (with elitism)
-   f. Track best fitness
-3. Return best individual found
-```
-
-## 📤 Program Output
-
-### Output Format
-```
-=== AMERICAN TOURNAMENT CALENDAR ===
-Players: A, B, C, D, E, F, G
-Total matches: 50
-
-Match 1: (A,D) vs (B,C)
-Match 2: (A,E) vs (D,F)
-Match 3: (B,G) vs (C,E)
-...
-Match 50: (A,F) vs (C,G)
-
-=== STATISTICS ===
-Matches per player:
-  A: 28 matches
-  B: 29 matches
-  C: 28 matches
-  D: 29 matches
-  E: 28 matches
-  F: 28 matches
-  G: 30 matches
-
-=== CUT POINTS ===
-Perfect cuts: [7, 14, 21, 35]
-Acceptable cuts: [10, 18, 25, 32, 40, 48]
-```
-
-## 🏗️ Project Structure
-
-The project is organized into multiple files for better modularity:
-
-```
-american-tenis-tournament/
-├── src/
-│   ├── genetic_algorithm.py    # GA logic and classes
-│   └── printer.py              # Output formatting
-├── docs_agent/
-│   ├── agent.md                # This file - project overview
-│   └── implementation.md       # Implementation details and tasks
-├── main.py                     # Main execution script
-├── tournament.ipynb            # Jupyter notebook for easy execution
-└── README.md
-```
-
-For detailed implementation information, class structures, and task tracking, see [`implementation.md`](./implementation.md).
-
-## 🔧 Possible Extensions
-
-### Future Improvements
-1. **Additional Constraints:**
-   - Avoid a player playing consecutive matches
-   - Assign courts/schedules
-   - Consider skill levels for balanced matches
-
-2. **Optimizations:**
-   - Parallelize fitness calculation
-   - Hybrid algorithms (GA + local search)
-   - Alternative chromosome representations
-
-3. **Interface:**
-   - GUI to configure parameters
-   - Export calendar to CSV/PDF
-   - Graphical visualization of balance
-
-4. **Analysis:**
-   - Fitness evolution graphs
-   - Repetition statistics
-   - Comparison of different configurations
-
-## 📝 Implementation Notes
-
-### Important Considerations
-
-1. **Match Validation:**
-   - Each match must have exactly 4 different players
-   - No player can be repeated in the same match
-   - This is a HARD CONSTRAINT that must always be satisfied
-
-2. **Number of Players vs Match Size:**
-   - Each match requires exactly 4 players (2 teams of 2)
-   - With 7 players, 4 play and 3 wait in each match
-   - With 8 players, 4 play and 4 wait in each match
-   - The fitness function should minimize waiting rounds for all players
-
-3. **Sequential Match Concept:**
-   - Matches are played one at a time (sequentially)
-   - A player waits if they don't play in consecutive matches
-   - Example: Player A plays match 1, waits matches 2-4, plays match 5 → waited 3 rounds
-
-4. **Fitness Balance:**
-   - Penalty weights should be adjusted experimentally
-   - Prioritize match balance per player (highest weight)
-   - Waiting rounds should be minimized
-   - Repetitions are less critical in long calendars
-
-5. **Matrix Representation:**
-   - Calendar shape: `(N_MATCHES, 2 * N_PLAYERS)`
-   - Each row is a match
-   - First N_PLAYERS bits: team 1
-   - Next N_PLAYERS bits: team 2
-   - Exactly 4 ones per row (2 per team)
-
-## 🚀 How to Run
-
-### Option 1: Using main.py (Command Line)
-
-```bash
-# Run with default values
-python main.py
-
-# Modify parameters by editing main.py:
-# - N_PLAYERS = 7
-# - N_MATCHES = 50
-# - GENERATIONS = 200
-```
-
-### Option 2: Using Jupyter Notebook (Interactive)
-
-```bash
-# Start Jupyter
-jupyter notebook
-
-# Open tournament.ipynb
-# Run cells interactively
-# Modify parameters in the notebook cells
-```
-
-The notebook provides a more comfortable and interactive way to:
-- Experiment with different parameters
-- Visualize results
-- Run multiple configurations
-- Save and compare different runs
-
-## 📚 References
-
-- **Genetic Algorithms:** Optimization technique inspired by natural evolution
-- **American Tournament:** Format where everyone plays against everyone in different combinations
-- **Scheduling Problem:** Variant of the resource assignment problem
+This project solves this combinatorial optimization problem (NP-Hard) using Genetic Algorithms.
 
 ---
 
-**Creation Date:** 2025-11-29  
-**Version:** 1.0  
-**Author:** AI System for sports calendar generation
+## 🧬 Technical Implementation: Genetic Algorithm
 
+### Chromosome Representation
+An "individual" in our population is a **Complete Calendar** (an ordered sequence of matches).
+
+*   **Structure:** Matrix of `(N_MATCHES, 2 * N_PLAYERS)`.
+*   **Encoding:** One-hot encoding per match.
+    *   Example (7 players): `[1,0,1,0,0,0,0,  0,1,0,0,0,1,0]`
+    *   Means: (P1, P3) vs (P2, P6).
+    *   The first $N$ bits are Team 1, the next $N$ bits are Team 2.
+
+### Fitness Function (Tournament "Quality")
+The evaluation function (`fitness`) is a weighted sum of penalties (which we want to minimize) and bonuses.
+
+#### Penalties (Things to avoid):
+1.  **Match Imbalance (`w1` - Critical):** If Player A plays 10 matches and Player B plays 6, the tournament is a failure.
+2.  **Opponent Repetition (`w2`):** Boring if you always play against the same people.
+3.  **Teammate Repetition (`w3`):** Boring if you always play with the same partner.
+4.  **Long Waits (`w4`):** If a player plays match 1 and then has to wait until match 10, they will get cold and bored. We seek a uniform distribution of breaks.
+
+#### Bonuses (Things to seek):
+1.  **Early Cut Points (`w5` - Strategic):**
+    *   A "Cut Point" is a moment in the schedule where all players have played exactly the same number of matches.
+    *   **Why it matters:** Allows organizers to take logistical breaks (eat, drink, switch sides) or end the tournament if rental time runs out, without anyone feeling cheated for having played less.
+
+---
+
+## 🏗️ Code Structure
+
+*   **`src/genetic_algorithm.py`**: The core. Contains the `GeneticAlgorithm` class and evolution logic.
+*   **`src/dataclasses.py`**: Type definitions (`Match`, `Calendar`). Uses Pydantic for strict validation ensuring valid matches (4 unique players).
+*   **`src/utils.py`**: Mathematical helper functions.
+*   **`main.py`**: Entry point. Configures hyperparameters and launches execution.
+
+## 🔍 Key Parameters (Hyperparameters)
+
+Based on optimization performed (`optimization_results/`), the recommended values for a standard tournament (7-13 players) are:
+
+| Parameter | Rec. Value | Reason |
+|-----------|------------|-------|
+| `POPULATION_SIZE` | 100-200 | Sufficient diversity without being slow. |
+| `MUTATION_RATE` | **0.20** | A high value is needed here to escape local minima and find perfect cut points. |
+| `CROSSOVER_RATE` | 0.8 | Standard recombination. |
+| `ELITISM` | 2-3 | Always preserve the best solutions found. |
+
+## 🚀 Agent Guide (Maintenance Instructions)
+
+If you need to modify the code, keep in mind:
+1.  **Hard Validation:** Never allow an invalid match to be generated (e.g., a player playing against themselves or teams of 3). The `Match` class in `dataclasses.py` must be inviolable.
+2.  **Performance:** Fitness evaluation runs thousands of times. Any change in `calculate_fitness` must be vectorized (NumPy) if possible.
+3.  **Usability:** The end user is a tournament organizer, not a programmer. Outputs (`outputs/tournament_results.txt`) must be human-readable (names or letters A-Z, not 0-6 indices).
+
+---
+**Final Note:** This system prioritizes **fairness** over pure combination perfection. It is better to repeat a partner once than to leave a player waiting for 5 matches in a row.
