@@ -17,31 +17,32 @@ from .utils import generate_random_match, is_valid_match
 # FITNESS FUNCTIONS (PHASE 2)
 # ============================================================================
 
+
 def calculate_balance_penalty(calendar: Calendar) -> float:
     """
     Calculate penalty for unbalanced matches per player.
-    
+
     The penalty is based on the difference between the player with most matches
     and the player with fewest matches. We use squared difference to heavily
     penalize large imbalances.
-    
+
     Formula: penalty = (max_matches - min_matches)²
-    
+
     Args:
         calendar: Calendar object to evaluate
-        
+
     Returns:
         Penalty value (0 = perfect balance, higher = worse balance)
     """
     matches_per_player = calendar.get_matches_per_player()
-    
+
     if len(matches_per_player) == 0:
         return 0.0
-    
+
     match_counts = list(matches_per_player.values())
     max_matches = max(match_counts)
     min_matches = min(match_counts)
-    
+
     penalty = (max_matches - min_matches) ** 2
     return float(penalty)
 
@@ -49,32 +50,32 @@ def calculate_balance_penalty(calendar: Calendar) -> float:
 def calculate_opponent_repetition_penalty(calendar: Calendar) -> float:
     """
     Calculate penalty for repeated opponent pairings.
-    
+
     For each pair of players that face each other, we count how many times
     they play against each other. The penalty is the sum of (count - 1)²
     for all opponent pairs.
-    
+
     Formula: penalty = Σ (opponent_count[pair] - 1)² for all opponent pairs
-    
+
     Args:
         calendar: Calendar object to evaluate
-        
+
     Returns:
         Penalty value (0 = no repetitions, higher = more repetitions)
     """
     opponent_counts = defaultdict(int)
-    
+
     for match_vector in calendar.matches:
         match = Match(match_vector=match_vector, n_players=calendar.n_players)
         team1, team2 = match.get_teams()
-        
+
         # Count all opponent pairings (team1 vs team2)
         for p1 in team1:
             for p2 in team2:
                 # Use sorted tuple to avoid counting (A,B) and (B,A) separately
                 pair = tuple(sorted([p1, p2]))
                 opponent_counts[pair] += 1
-    
+
     # Calculate penalty: sum of (count - 1)² for each pair
     penalty = sum((count - 1) ** 2 for count in opponent_counts.values())
     return float(penalty)
@@ -83,37 +84,37 @@ def calculate_opponent_repetition_penalty(calendar: Calendar) -> float:
 def calculate_team_repetition_penalty(calendar: Calendar) -> float:
     """
     Calculate penalty for repeated team pairings.
-    
+
     For each pair of players that play together on the same team, we count
     how many times they team up. The penalty is the sum of (count - 1)²
     for all team pairs.
-    
+
     Formula: penalty = Σ (team_count[pair] - 1)² for all team pairs
-    
+
     Args:
         calendar: Calendar object to evaluate
-        
+
     Returns:
         Penalty value (0 = no repetitions, higher = more repetitions)
     """
     team_counts = defaultdict(int)
-    
+
     for match_vector in calendar.matches:
         match = Match(match_vector=match_vector, n_players=calendar.n_players)
         team1, team2 = match.get_teams()
-        
+
         # Count team pairings in team1
         for i, p1 in enumerate(team1):
-            for p2 in team1[i+1:]:
+            for p2 in team1[i + 1 :]:
                 pair = tuple(sorted([p1, p2]))
                 team_counts[pair] += 1
-        
+
         # Count team pairings in team2
         for i, p1 in enumerate(team2):
-            for p2 in team2[i+1:]:
+            for p2 in team2[i + 1 :]:
                 pair = tuple(sorted([p1, p2]))
                 team_counts[pair] += 1
-    
+
     # Calculate penalty: sum of (count - 1)² for each pair
     penalty = sum((count - 1) ** 2 for count in team_counts.values())
     return float(penalty)
@@ -122,82 +123,82 @@ def calculate_team_repetition_penalty(calendar: Calendar) -> float:
 def calculate_waiting_penalty(calendar: Calendar) -> float:
     """
     Calculate penalty for players waiting too long between matches.
-    
+
     For each player, we find the gaps between consecutive matches they play.
     The penalty is the sum of gap² for all gaps of all players.
-    
+
     Formula: penalty = Σ Σ (gap)² for all players and their gaps
-    
+
     Example: If player A plays matches [0, 3, 5], gaps are [2, 1],
              penalty contribution = 2² + 1² = 5
-    
+
     Args:
         calendar: Calendar object to evaluate
-        
+
     Returns:
         Penalty value (0 = no waiting, higher = more waiting)
     """
     waiting_rounds = calendar.get_waiting_rounds_per_player()
-    
+
     penalty = 0.0
     for player, gaps in waiting_rounds.items():
         for gap in gaps:
-            penalty += gap ** 2
-    
+            penalty += gap**2
+
     return float(penalty)
 
 
 def calculate_early_cut_bonus(calendar: Calendar) -> float:
     """
     Calculate bonus for having cut points early in the calendar and maximizing total cut points.
-    
+
     A cut point is an index where the tournament can be stopped with all
     players having played a balanced number of matches.
-    
+
     Perfect cut: max_difference = 0 (all players played same number)
     Acceptable cut: max_difference ≤ 1
-    
+
     The bonus rewards:
     1. Calendars where the first cut point appears early (high priority)
     2. Calendars with many cut points throughout (maximize flexibility)
     3. Calendars with well-distributed cut points (uniform spacing)
-    
-    Formula: 
-        bonus = 1000 / (first_perfect_cut + 1) + 
-                perfect_cut_count * 20.0 + 
+
+    Formula:
+        bonus = 1000 / (first_perfect_cut + 1) +
+                perfect_cut_count * 20.0 +
                 acceptable_cut_count * 5.0 +
                 distribution_bonus
-    
+
     Args:
         calendar: Calendar object to evaluate
-        
+
     Returns:
         Bonus value (higher = better, 0 = no early cuts)
     """
     if len(calendar) == 0:
         return 0.0
-    
+
     first_perfect_cut = None
     first_acceptable_cut = None
     perfect_cut_count = 0
     acceptable_cut_count = 0
     perfect_cut_positions = []
     acceptable_cut_positions = []
-    
+
     # Check each position in the calendar
     for cut_index in range(1, len(calendar) + 1):
         # Count matches per player up to this point
         matches_count = {i: 0 for i in range(calendar.n_players)}
-        
+
         for i in range(cut_index):
             match = calendar.get_match(i)
             players = match.get_players()
             for player in players:
                 matches_count[player] += 1
-        
+
         counts = list(matches_count.values())
         max_diff = max(counts) - min(counts)
-        
+
         # Check for perfect cut
         if max_diff == 0:
             if first_perfect_cut is None:
@@ -212,21 +213,21 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
                 first_acceptable_cut = cut_index
             acceptable_cut_count += 1
             acceptable_cut_positions.append(cut_index)
-    
+
     bonus = 0.0
-    
+
     # Main bonus: reward first perfect cut (inversely proportional to position)
     if first_perfect_cut is not None:
         bonus += 1000.0 / first_perfect_cut
     elif first_acceptable_cut is not None:
         # If no perfect cut, give smaller bonus for acceptable cut
         bonus += 500.0 / first_acceptable_cut
-    
+
     # IMPROVED: Significant bonus for total number of cut points
     # This maximizes flexibility - more cut points = more options to stop tournament
     bonus += perfect_cut_count * 20.0  # Increased from 10.0
     bonus += acceptable_cut_count * 5.0  # Additional bonus for all acceptable cuts
-    
+
     # NEW: Bonus for well-distributed cut points
     # Calculate distribution quality by measuring gaps between consecutive cuts
     if len(acceptable_cut_positions) >= 2:
@@ -235,23 +236,23 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
         for i in range(len(acceptable_cut_positions) - 1):
             gap = acceptable_cut_positions[i + 1] - acceptable_cut_positions[i]
             gaps.append(gap)
-        
+
         # Calculate standard deviation of gaps (lower is better = more uniform)
         if gaps:
             avg_gap = sum(gaps) / len(gaps)
             variance = sum((g - avg_gap) ** 2 for g in gaps) / len(gaps)
-            std_dev = variance ** 0.5
-            
+            std_dev = variance**0.5
+
             # Bonus inversely proportional to standard deviation
             # Lower std_dev = more uniform distribution = higher bonus
             # Add 1 to avoid division by zero
             distribution_bonus = 50.0 / (std_dev + 1.0)
             bonus += distribution_bonus
-            
+
             # Additional bonus if gaps are very uniform (std_dev < 2)
             if std_dev < 2.0:
                 bonus += 25.0  # Extra bonus for excellent distribution
-    
+
     return float(bonus)
 
 
@@ -261,14 +262,14 @@ def calculate_fitness(
     weight_opponent_rep: float = 10.0,
     weight_team_rep: float = 10.0,
     weight_waiting: float = 5.0,
-    weight_early_cut: float = 50.0
+    weight_early_cut: float = 50.0,
 ) -> float:
     """
     Calculate combined fitness for a calendar.
-    
+
     Fitness is calculated as negative sum of weighted penalties plus bonus.
     Higher fitness is better.
-    
+
     Formula:
         fitness = -(
             w1 * penalty_balance +
@@ -276,7 +277,7 @@ def calculate_fitness(
             w3 * penalty_team_repetition +
             w4 * penalty_waiting
         ) + w5 * bonus_early_cuts
-    
+
     Args:
         calendar: Calendar object to evaluate
         weight_balance: Weight for balance penalty (default: 100.0 - highest)
@@ -284,31 +285,34 @@ def calculate_fitness(
         weight_team_rep: Weight for team repetition (default: 10.0)
         weight_waiting: Weight for waiting penalty (default: 5.0)
         weight_early_cut: Weight for early cut bonus (default: 50.0)
-        
+
     Returns:
         Fitness value (higher is better)
     """
     # Validate calendar first
     if not calendar.is_valid():
-        return float('-inf')  # Invalid calendar gets worst possible fitness
-    
+        return float("-inf")  # Invalid calendar gets worst possible fitness
+
     # Calculate all penalties
     penalty_balance = calculate_balance_penalty(calendar)
     penalty_opponent = calculate_opponent_repetition_penalty(calendar)
     penalty_team = calculate_team_repetition_penalty(calendar)
     penalty_waiting = calculate_waiting_penalty(calendar)
-    
+
     # Calculate bonus
     bonus_cut = calculate_early_cut_bonus(calendar)
-    
+
     # Combined fitness (penalties are negative, bonus is positive)
-    fitness = -(
-        weight_balance * penalty_balance +
-        weight_opponent_rep * penalty_opponent +
-        weight_team_rep * penalty_team +
-        weight_waiting * penalty_waiting
-    ) + weight_early_cut * bonus_cut
-    
+    fitness = (
+        -(
+            weight_balance * penalty_balance
+            + weight_opponent_rep * penalty_opponent
+            + weight_team_rep * penalty_team
+            + weight_waiting * penalty_waiting
+        )
+        + weight_early_cut * bonus_cut
+    )
+
     return float(fitness)
 
 
@@ -316,42 +320,43 @@ def calculate_fitness(
 # CUT POINTS DETECTION (PHASE 4)
 # ============================================================================
 
+
 def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
     """
     Detect perfect and acceptable cut points in a calendar.
-    
+
     A cut point is an index where the tournament can be stopped while
     maintaining balance:
     - Perfect cut: max_difference = 0 (all players played same number)
     - Acceptable cut: max_difference ≤ 1
-    
+
     Args:
         calendar: Calendar to analyze
-        
+
     Returns:
         Tuple of (perfect_cuts, acceptable_cuts) where each is a list of indices
     """
     perfect_cuts = []
     acceptable_cuts = []
-    
+
     if len(calendar) == 0:
         return perfect_cuts, acceptable_cuts
-    
+
     # Check each position in the calendar
     for cut_index in range(1, len(calendar) + 1):
         # Count matches per player up to this point
         matches_count = {i: 0 for i in range(calendar.n_players)}
-        
+
         for i in range(cut_index):
             match = calendar.get_match(i)
             players = match.get_players()
             for player in players:
                 matches_count[player] += 1
-        
+
         # Calculate difference
         counts = list(matches_count.values())
         max_diff = max(counts) - min(counts)
-        
+
         # Check for perfect cut
         if max_diff == 0:
             perfect_cuts.append(cut_index)
@@ -359,23 +364,23 @@ def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
         # Check for acceptable cut
         elif max_diff <= 1:
             acceptable_cuts.append(cut_index)
-    
+
     return perfect_cuts, acceptable_cuts
 
 
 def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
     """
     Validate the quality of a calendar solution.
-    
+
     Quality levels:
     - EXCELLENT: First perfect cut in first 30% of matches
     - GOOD: First perfect cut in first 50% of matches
     - ACCEPTABLE: First acceptable cut in first 60% of matches
     - REJECTED: No cut points or first cut after 60%
-    
+
     Args:
         calendar: Calendar to validate
-        
+
     Returns:
         Tuple of (is_valid, quality, message)
         - is_valid: True if solution meets minimum requirements
@@ -385,27 +390,27 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
     # Check if all matches are valid
     if not calendar.is_valid():
         return False, "REJECTED", "Calendar contains invalid matches"
-    
+
     # Detect cut points
     perfect_cuts, acceptable_cuts = detect_cut_points(calendar)
-    
+
     n_matches = len(calendar)
-    
+
     if n_matches == 0:
         return False, "REJECTED", "Calendar is empty"
-    
+
     # Check for perfect cuts
     if len(perfect_cuts) > 0:
         first_perfect = perfect_cuts[0]
         position_percent = (first_perfect / n_matches) * 100
-        
+
         if position_percent <= 30:
             return (
                 True,
                 "EXCELLENT",
                 f"Excellent! First perfect cut at match {first_perfect} "
                 f"({position_percent:.1f}% of calendar). "
-                f"Total perfect cuts: {len(perfect_cuts)}"
+                f"Total perfect cuts: {len(perfect_cuts)}",
             )
         elif position_percent <= 50:
             return (
@@ -413,7 +418,7 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
                 "GOOD",
                 f"Good solution. First perfect cut at match {first_perfect} "
                 f"({position_percent:.1f}% of calendar). "
-                f"Total perfect cuts: {len(perfect_cuts)}"
+                f"Total perfect cuts: {len(perfect_cuts)}",
             )
         else:
             return (
@@ -421,35 +426,35 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
                 "ACCEPTABLE",
                 f"Acceptable solution. First perfect cut at match {first_perfect} "
                 f"({position_percent:.1f}% of calendar). "
-                f"Total perfect cuts: {len(perfect_cuts)}"
+                f"Total perfect cuts: {len(perfect_cuts)}",
             )
-    
+
     # Check for acceptable cuts
     if len(acceptable_cuts) > 0:
         first_acceptable = acceptable_cuts[0]
         position_percent = (first_acceptable / n_matches) * 100
-        
+
         if position_percent <= 60:
             return (
                 True,
                 "ACCEPTABLE",
                 f"Acceptable solution. First acceptable cut at match {first_acceptable} "
                 f"({position_percent:.1f}% of calendar). "
-                f"Total acceptable cuts: {len(acceptable_cuts)}"
+                f"Total acceptable cuts: {len(acceptable_cuts)}",
             )
         else:
             return (
                 False,
                 "REJECTED",
                 f"Solution rejected. First acceptable cut too late at match {first_acceptable} "
-                f"({position_percent:.1f}% of calendar)"
+                f"({position_percent:.1f}% of calendar)",
             )
-    
+
     # No cut points found
     return (
         False,
         "REJECTED",
-        "Solution rejected. No cut points found (calendar is very unbalanced)"
+        "Solution rejected. No cut points found (calendar is very unbalanced)",
     )
 
 
@@ -457,17 +462,18 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
 # GENETIC ALGORITHM CLASS (PHASE 3)
 # ============================================================================
 
+
 class GeneticAlgorithm:
     """
     Genetic Algorithm for optimizing tournament calendars.
-    
+
     The GA uses:
     - Tournament selection for parent selection
     - Single-point crossover for recombination
     - Multiple mutation operators (swap, replace, regenerate)
     - Elitism to preserve best solutions
     """
-    
+
     def __init__(
         self,
         n_players: int,
@@ -483,11 +489,11 @@ class GeneticAlgorithm:
         weight_waiting: float = 5.0,
         weight_early_cut: float = 50.0,
         n_jobs: int = 1,
-        early_stopping_patience: int | None = None
+        early_stopping_patience: int | None = None,
     ):
         """
         Initialize the Genetic Algorithm.
-        
+
         Args:
             n_players: Number of players in the tournament
             n_matches: Number of matches to generate
@@ -513,21 +519,21 @@ class GeneticAlgorithm:
         self.elitism_size = elitism_size
         self.n_jobs = n_jobs
         self.early_stopping_patience = early_stopping_patience
-        
+
         # Fitness weights
         self.weight_balance = weight_balance
         self.weight_opponent_rep = weight_opponent_rep
         self.weight_team_rep = weight_team_rep
         self.weight_waiting = weight_waiting
         self.weight_early_cut = weight_early_cut
-        
+
         # Track best fitness over generations
         self.best_fitness_history = []
-    
+
     def initialize_population(self) -> list[Calendar]:
         """
         Initialize a random population of calendars.
-        
+
         Returns:
             List of Calendar objects
         """
@@ -538,21 +544,21 @@ class GeneticAlgorithm:
             for _ in range(self.n_matches):
                 match_vector = generate_random_match(self.n_players)
                 matches.append(match_vector)
-            
+
             # Create Calendar object
             matches_array = np.array(matches)
             calendar = Calendar(matches=matches_array, n_players=self.n_players)
             population.append(calendar)
-        
+
         return population
-    
+
     def calculate_fitness_for_calendar(self, calendar: Calendar) -> float:
         """
         Calculate fitness for a calendar using configured weights.
-        
+
         Args:
             calendar: Calendar to evaluate
-            
+
         Returns:
             Fitness value (higher is better)
         """
@@ -562,48 +568,50 @@ class GeneticAlgorithm:
             weight_opponent_rep=self.weight_opponent_rep,
             weight_team_rep=self.weight_team_rep,
             weight_waiting=self.weight_waiting,
-            weight_early_cut=self.weight_early_cut
+            weight_early_cut=self.weight_early_cut,
         )
-    
+
     def tournament_selection(
         self,
         population: list[Calendar],
         fitness_scores: list[float],
-        tournament_size: int = 3
+        tournament_size: int = 3,
     ) -> Calendar:
         """
         Select an individual using tournament selection.
-        
+
         Args:
             population: List of calendars
             fitness_scores: List of fitness values for each calendar
             tournament_size: Number of individuals in tournament
-            
+
         Returns:
             Selected calendar
         """
         # Randomly select tournament_size individuals
         tournament_indices = random.sample(range(len(population)), tournament_size)
-        
+
         # Find the best individual in the tournament
         best_idx = tournament_indices[0]
         best_fitness = fitness_scores[best_idx]
-        
+
         for idx in tournament_indices[1:]:
             if fitness_scores[idx] > best_fitness:
                 best_idx = idx
                 best_fitness = fitness_scores[idx]
-        
+
         return population[best_idx]
-    
-    def crossover(self, parent1: Calendar, parent2: Calendar) -> tuple[Calendar, Calendar]:
+
+    def crossover(
+        self, parent1: Calendar, parent2: Calendar
+    ) -> tuple[Calendar, Calendar]:
         """
         Perform single-point crossover between two parents.
-        
+
         Args:
             parent1: First parent calendar
             parent2: Second parent calendar
-            
+
         Returns:
             Tuple of (child1, child2)
         """
@@ -614,40 +622,38 @@ class GeneticAlgorithm:
             child2_matches = np.copy(parent2.matches)
             return (
                 Calendar(matches=child1_matches, n_players=self.n_players),
-                Calendar(matches=child2_matches, n_players=self.n_players)
+                Calendar(matches=child2_matches, n_players=self.n_players),
             )
-        
+
         # Perform single-point crossover
         crossover_point = random.randint(1, self.n_matches - 1)
-        
+
         # Create children by combining parent segments
-        child1_matches = np.vstack([
-            parent1.matches[:crossover_point],
-            parent2.matches[crossover_point:]
-        ])
-        
-        child2_matches = np.vstack([
-            parent2.matches[:crossover_point],
-            parent1.matches[crossover_point:]
-        ])
-        
+        child1_matches = np.vstack(
+            [parent1.matches[:crossover_point], parent2.matches[crossover_point:]]
+        )
+
+        child2_matches = np.vstack(
+            [parent2.matches[:crossover_point], parent1.matches[crossover_point:]]
+        )
+
         return (
             Calendar(matches=child1_matches, n_players=self.n_players),
-            Calendar(matches=child2_matches, n_players=self.n_players)
+            Calendar(matches=child2_matches, n_players=self.n_players),
         )
-    
+
     def mutate(self, calendar: Calendar) -> Calendar:
         """
         Mutate a calendar using one of three mutation operators.
-        
+
         Mutation types:
         1. Replace match: Replace one match with a new random match
         2. Swap matches: Swap the order of two matches
         3. Regenerate match: Completely regenerate a random match
-        
+
         Args:
             calendar: Calendar to mutate
-            
+
         Returns:
             Mutated calendar
         """
@@ -656,53 +662,53 @@ class GeneticAlgorithm:
             # No mutation, return copy
             matches_copy = np.copy(calendar.matches)
             return Calendar(matches=matches_copy, n_players=self.n_players)
-        
+
         # Create a copy of matches
         mutated_matches = np.copy(calendar.matches)
-        
+
         # Choose mutation type randomly
-        mutation_type = random.choice(['replace', 'swap', 'regenerate'])
-        
-        if mutation_type == 'replace' or mutation_type == 'regenerate':
+        mutation_type = random.choice(["replace", "swap", "regenerate"])
+
+        if mutation_type == "replace" or mutation_type == "regenerate":
             # Replace/regenerate a random match
             match_idx = random.randint(0, self.n_matches - 1)
             mutated_matches[match_idx] = generate_random_match(self.n_players)
-        
-        elif mutation_type == 'swap':
+
+        elif mutation_type == "swap":
             # Swap two random matches
             if self.n_matches >= 2:
                 idx1, idx2 = random.sample(range(self.n_matches), 2)
                 mutated_matches[idx1], mutated_matches[idx2] = (
                     mutated_matches[idx2].copy(),
-                    mutated_matches[idx1].copy()
+                    mutated_matches[idx1].copy(),
                 )
-        
+
         return Calendar(matches=mutated_matches, n_players=self.n_players)
-    
+
     def run(self, verbose: bool = True) -> Calendar:
         """
         Run the genetic algorithm.
-        
+
         Args:
             verbose: If True, print progress information
-            
+
         Returns:
             Best calendar found
         """
         # Initialize population
         if verbose:
             print(f"Initializing population of {self.population_size} individuals...")
-        
+
         population = self.initialize_population()
-        
+
         # Track best individual
         best_calendar = None
-        best_fitness = float('-inf')
+        best_fitness = float("-inf")
         generations_without_improvement = 0
-        
+
         # Evolution loop with progress bar
         pbar = tqdm(range(self.generations), desc="Evolving", disable=not verbose)
-        
+
         for generation in pbar:
             # Calculate fitness for all individuals (parallelized if n_jobs > 1)
             if self.n_jobs == 1:
@@ -713,89 +719,100 @@ class GeneticAlgorithm:
             else:
                 # Parallel execution
                 fitness_scores = Parallel(n_jobs=self.n_jobs, prefer="threads")(
-                    delayed(self.calculate_fitness_for_calendar)(cal) for cal in population
+                    delayed(self.calculate_fitness_for_calendar)(cal)
+                    for cal in population
                 )
-            
+
             # Update best individual
             gen_best_idx = fitness_scores.index(max(fitness_scores))
             gen_best_fitness = fitness_scores[gen_best_idx]
             gen_avg_fitness = sum(fitness_scores) / len(fitness_scores)
-            
+
             if gen_best_fitness > best_fitness:
                 best_fitness = gen_best_fitness
                 best_calendar = population[gen_best_idx]
                 generations_without_improvement = 0
-                
+
                 # Check if we found a good solution
                 is_valid, quality, _ = validate_solution(best_calendar)
                 if verbose and is_valid:
-                    tqdm.write(f"🎯 Generation {generation + 1}: Found {quality} solution! Fitness: {best_fitness:.2f}")
+                    tqdm.write(
+                        f"🎯 Generation {generation + 1}: Found {quality} solution! Fitness: {best_fitness:.2f}"
+                    )
             else:
                 generations_without_improvement += 1
-            
+
             # Track fitness history
             self.best_fitness_history.append(best_fitness)
-            
+
             # Update progress bar
-            pbar.set_postfix({
-                'Best': f'{best_fitness:.2f}',
-                'Avg': f'{gen_avg_fitness:.2f}',
-                'No Improv': generations_without_improvement
-            })
-            
+            pbar.set_postfix(
+                {
+                    "Best": f"{best_fitness:.2f}",
+                    "Avg": f"{gen_avg_fitness:.2f}",
+                    "No Improv": generations_without_improvement,
+                }
+            )
+
             # Check early stopping condition
-            if (self.early_stopping_patience is not None and 
-                generations_without_improvement >= self.early_stopping_patience):
+            if (
+                self.early_stopping_patience is not None
+                and generations_without_improvement >= self.early_stopping_patience
+            ):
                 if verbose:
-                    tqdm.write(f"\n⏹️  Early stopping triggered after {generation + 1} generations")
-                    tqdm.write(f"   No improvement for {generations_without_improvement} generations")
+                    tqdm.write(
+                        f"\n⏹️  Early stopping triggered after {generation + 1} generations"
+                    )
+                    tqdm.write(
+                        f"   No improvement for {generations_without_improvement} generations"
+                    )
                 pbar.close()
                 if verbose:
                     print(f"\n✓ Optimization completed (early stopping)!")
                     print(f"  Best fitness achieved: {best_fitness:.2f}")
                 return best_calendar
-            
+
             # Create new generation
             new_population = []
-            
+
             # Elitism: keep best individuals
             elite_indices = sorted(
                 range(len(fitness_scores)),
                 key=lambda i: fitness_scores[i],
-                reverse=True
-            )[:self.elitism_size]
-            
+                reverse=True,
+            )[: self.elitism_size]
+
             for idx in elite_indices:
                 matches_copy = np.copy(population[idx].matches)
                 new_population.append(
                     Calendar(matches=matches_copy, n_players=self.n_players)
                 )
-            
+
             # Generate offspring to fill the rest of the population
             while len(new_population) < self.population_size:
                 # Select parents
                 parent1 = self.tournament_selection(population, fitness_scores)
                 parent2 = self.tournament_selection(population, fitness_scores)
-                
+
                 # Crossover
                 child1, child2 = self.crossover(parent1, parent2)
-                
+
                 # Mutation
                 child1 = self.mutate(child1)
                 child2 = self.mutate(child2)
-                
+
                 # Add to new population
                 new_population.append(child1)
                 if len(new_population) < self.population_size:
                     new_population.append(child2)
-            
+
             # Replace old population
-            population = new_population[:self.population_size]
-        
+            population = new_population[: self.population_size]
+
         pbar.close()
-        
+
         if verbose:
             print(f"\n✓ Optimization completed!")
             print(f"  Best fitness achieved: {best_fitness:.2f}")
-        
+
         return best_calendar
