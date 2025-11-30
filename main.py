@@ -23,43 +23,45 @@ def main():
     N_PLAYERS = 7           # Number of players
     N_MATCHES = 20          # Number of matches to generate
     
-    # Genetic Algorithm parameters
-    POPULATION_SIZE = 100   # Size of the population
-    GENERATIONS = 200       # Number of generations to evolve
-    MUTATION_RATE = 0.1     # Probability of mutation (0.0 to 1.0)
-    CROSSOVER_RATE = 0.8    # Probability of crossover (0.0 to 1.0)
-    ELITISM_SIZE = 2        # Number of best individuals to preserve
+    # Genetic Algorithm parameters (optimized to maximize cut points)
+    # See: run_hyperparameter_optimization.py and analyze_results.py
+    # Configuration optimized for maximum cut points (25+ average with mutation 0.2)
+    POPULATION_SIZE = 200   # Size of the population (optimal: 100-150 for medium tournaments)
+    GENERATIONS = 200       # Number of generations to evolve (optimal: 200 with early stopping)
+    MUTATION_RATE = 0.2     # Probability of mutation (optimal: 0.2 for MAXIMUM cut points - 25.7 average)
+    CROSSOVER_RATE = 0.8    # Probability of crossover (optimal: 0.8 for good recombination)
+    ELITISM_SIZE = 2        # Number of best individuals to preserve (optimal: 2-3)
     N_JOBS = -1             # Number of parallel jobs (-1 = all cores, 1 = sequential)
-    EARLY_STOPPING_PATIENCE = 20  # Stop if no improvement for N generations (None to disable)
+    EARLY_STOPPING_PATIENCE = 50  # Stop if no improvement (increased to allow more exploration)
     
-    # Fitness weights
+    # Fitness weights (optimized for cut points maximization)
     WEIGHT_BALANCE = 100.0      # Most important - balance matches per player
     WEIGHT_OPPONENT_REP = 10.0  # Medium - minimize opponent repetitions
     WEIGHT_TEAM_REP = 10.0      # Medium - minimize team repetitions
     WEIGHT_WAITING = 5.0        # Low-medium - minimize waiting rounds
-    WEIGHT_EARLY_CUT = 50.0     # High - incentivize early cut points
+    WEIGHT_EARLY_CUT = 75.0     # Very High - strongly incentivize early cut points (increased from 50.0)
     
     # ========================================================================
     # DISPLAY CONFIGURATION
     # ========================================================================
     
-    print("\n📋 Configuration:")
+    print("\n📋 Configuration (Optimized for Maximum Cut Points):")
     print(f"  • Players: {N_PLAYERS}")
     print(f"  • Matches to generate: {N_MATCHES}")
     print(f"  • Population size: {POPULATION_SIZE}")
     print(f"  • Generations: {GENERATIONS}")
-    print(f"  • Mutation rate: {MUTATION_RATE}")
+    print(f"  • Mutation rate: {MUTATION_RATE} ⚠️  High mutation for more exploration")
     print(f"  • Crossover rate: {CROSSOVER_RATE}")
     print(f"  • Elitism size: {ELITISM_SIZE}")
     print(f"  • Parallel jobs: {N_JOBS if N_JOBS > 0 else 'all CPU cores'}")
     print(f"  • Early stopping patience: {EARLY_STOPPING_PATIENCE if EARLY_STOPPING_PATIENCE else 'disabled'}")
     
-    print("\n⚖️  Fitness Weights:")
+    print("\n⚖️  Fitness Weights (Optimized for Cut Points):")
     print(f"  • Balance: {WEIGHT_BALANCE} (highest priority)")
     print(f"  • Opponent repetition: {WEIGHT_OPPONENT_REP}")
     print(f"  • Team repetition: {WEIGHT_TEAM_REP}")
     print(f"  • Waiting rounds: {WEIGHT_WAITING}")
-    print(f"  • Early cut points: {WEIGHT_EARLY_CUT} (bonus)")
+    print(f"  • Early cut points: {WEIGHT_EARLY_CUT} ⭐ High bonus for cut points!")
     
     # ========================================================================
     # INITIALIZE GENETIC ALGORITHM

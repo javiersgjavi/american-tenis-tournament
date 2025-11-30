@@ -18,10 +18,12 @@ Date: 2025-11-29
 
 import argparse
 import sys
+from pathlib import Path
 from src.hyperparameter_optimizer import (
     HyperparameterOptimizer,
     HyperparameterConfig
 )
+from analyze_results import print_analysis
 
 
 def run_baseline_test(optimizer: HyperparameterOptimizer, config: HyperparameterConfig, n_trials: int = 10):
@@ -86,6 +88,11 @@ def run_small_tournament_optimization(quick: bool = False):
     print(f"  Quality: {best_result.quality_level}")
     print(f"  Time: {best_result.execution_time:.2f}s")
     print(f"  Cut Points: {best_result.acceptable_cuts_count}")
+    
+    # Display detailed analysis
+    results_file = Path("optimization_results/small/small_tournament_results.json")
+    if results_file.exists():
+        print_analysis(results_file)
 
 
 def run_medium_tournament_optimization(quick: bool = False):
@@ -103,7 +110,7 @@ def run_medium_tournament_optimization(quick: bool = False):
     run_baseline_test(optimizer, base_config, n_trials=n_trials)
     
     # Test parameters
-    optimizer.test_population_sizes(base_config, sizes=[50, 100, 150, 200], n_trials=n_trials)
+    optimizer.test_population_sizes(base_config, sizes=[50, 75, 100, 150], n_trials=n_trials)
     optimizer.test_generation_counts(base_config, counts=[100, 200, 300], n_trials=n_trials)
     optimizer.test_mutation_rates(base_config, rates=[0.05, 0.1, 0.15, 0.2], n_trials=n_trials)
     optimizer.test_crossover_rates(base_config, rates=[0.6, 0.7, 0.8, 0.9], n_trials=n_trials)
@@ -130,6 +137,11 @@ def run_medium_tournament_optimization(quick: bool = False):
     print(f"  Quality: {best_result.quality_level}")
     print(f"  Time: {best_result.execution_time:.2f}s")
     print(f"  Cut Points: {best_result.acceptable_cuts_count}")
+    
+    # Display detailed analysis
+    results_file = Path("optimization_results/medium/medium_tournament_results.json")
+    if results_file.exists():
+        print_analysis(results_file)
 
 
 def run_large_tournament_optimization(quick: bool = False):
@@ -174,6 +186,11 @@ def run_large_tournament_optimization(quick: bool = False):
     print(f"  Quality: {best_result.quality_level}")
     print(f"  Time: {best_result.execution_time:.2f}s")
     print(f"  Cut Points: {best_result.acceptable_cuts_count}")
+    
+    # Display detailed analysis
+    results_file = Path("optimization_results/large/large_tournament_results.json")
+    if results_file.exists():
+        print_analysis(results_file)
 
 
 def main():
