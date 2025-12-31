@@ -20,29 +20,33 @@ def main():
     print("=" * 70)
 
     # Tournament parameters
-    N_PLAYERS = 8           # Number of players
-    N_ROUNDS = 10           # Number of rounds to play (total matches = N_ROUNDS * N_COURTS)
-    N_COURTS = 2            # Number of courts available (default: 1 = sequential play)
-                            # With N_COURTS > 1, matches are grouped into rounds
-                            # Minimum players needed: N_COURTS * 4
+    N_PLAYERS = 8  # Number of players
+    N_ROUNDS = 10  # Number of rounds to play (total matches = N_ROUNDS * N_COURTS)
+    N_COURTS = 2  # Number of courts available (default: 1 = sequential play)
+    # With N_COURTS > 1, matches are grouped into rounds
+    # Minimum players needed: N_COURTS * 4
 
     # Genetic Algorithm parameters (optimized to maximize cut points)
     # See: run_hyperparameter_optimization.py and analyze_results.py
     # Configuration optimized for maximum cut points (25+ average with mutation 0.2)
-    POPULATION_SIZE = 200   # Size of the population (optimal: 100-200)
-    GENERATIONS = 200       # Number of generations to evolve (optimal: 200 with early stopping)
-    MUTATION_RATE = 0.2     # Probability of mutation (optimal: 0.2 for MAXIMUM cut points)
-    CROSSOVER_RATE = 0.8    # Probability of crossover (optimal: 0.8)
-    ELITISM_SIZE = 2        # Number of best individuals to preserve (optimal: 2-3)
-    N_JOBS = -1             # Number of parallel jobs (-1 = all cores, 1 = sequential)
-    EARLY_STOPPING_PATIENCE = 50  # Stop if no improvement (increased to allow more exploration)
+    POPULATION_SIZE = 200  # Size of the population (optimal: 100-200)
+    GENERATIONS = (
+        200  # Number of generations to evolve (optimal: 200 with early stopping)
+    )
+    MUTATION_RATE = 0.2  # Probability of mutation (optimal: 0.2 for MAXIMUM cut points)
+    CROSSOVER_RATE = 0.8  # Probability of crossover (optimal: 0.8)
+    ELITISM_SIZE = 2  # Number of best individuals to preserve (optimal: 2-3)
+    N_JOBS = -1  # Number of parallel jobs (-1 = all cores, 1 = sequential)
+    EARLY_STOPPING_PATIENCE = (
+        50  # Stop if no improvement (increased to allow more exploration)
+    )
 
     # Fitness weights (optimized for cut points maximization)
-    WEIGHT_BALANCE = 100.0      # Most important - balance matches per player
+    WEIGHT_BALANCE = 100.0  # Most important - balance matches per player
     WEIGHT_OPPONENT_REP = 10.0  # Medium - minimize opponent repetitions
-    WEIGHT_TEAM_REP = 10.0      # Medium - minimize team repetitions
-    WEIGHT_WAITING = 5.0        # Low-medium - minimize waiting rounds
-    WEIGHT_EARLY_CUT = 75.0     # Very High - strongly incentivize early cut points
+    WEIGHT_TEAM_REP = 10.0  # Medium - minimize team repetitions
+    WEIGHT_WAITING = 5.0  # Low-medium - minimize waiting rounds
+    WEIGHT_EARLY_CUT = 75.0  # Very High - strongly incentivize early cut points
 
     # ========================================================================
     # DISPLAY CONFIGURATION
