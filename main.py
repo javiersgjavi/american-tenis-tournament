@@ -20,8 +20,11 @@ def main():
     print("="*70)
     
     # Tournament parameters
-    N_PLAYERS = 7           # Number of players
-    N_MATCHES = 20          # Number of matches to generate
+    N_PLAYERS = 8           # Number of players
+    N_ROUNDS = 10           # Number of rounds to play (total matches = N_ROUNDS * N_COURTS)
+    N_COURTS = 2            # Number of courts available (default: 1 = sequential play)
+                            # With N_COURTS > 1, matches are grouped into rounds
+                            # Minimum players needed: N_COURTS * 4
     
     # Genetic Algorithm parameters
     POPULATION_SIZE = 100   # Size of the population
@@ -45,7 +48,10 @@ def main():
     
     print("\n📋 Configuration:")
     print(f"  • Players: {N_PLAYERS}")
-    print(f"  • Matches to generate: {N_MATCHES}")
+    print(f"  • Rounds: {N_ROUNDS}")
+    print(f"  • Courts: {N_COURTS}")
+    total_matches = N_ROUNDS * N_COURTS
+    print(f"  • Total matches: {total_matches} ({N_ROUNDS} rounds × {N_COURTS} courts)")
     print(f"  • Population size: {POPULATION_SIZE}")
     print(f"  • Generations: {GENERATIONS}")
     print(f"  • Mutation rate: {MUTATION_RATE}")
@@ -71,7 +77,7 @@ def main():
     
     ga = GeneticAlgorithm(
         n_players=N_PLAYERS,
-        n_matches=N_MATCHES,
+        n_rounds=N_ROUNDS,
         population_size=POPULATION_SIZE,
         generations=GENERATIONS,
         mutation_rate=MUTATION_RATE,
@@ -83,7 +89,8 @@ def main():
         weight_waiting=WEIGHT_WAITING,
         weight_early_cut=WEIGHT_EARLY_CUT,
         n_jobs=N_JOBS,
-        early_stopping_patience=EARLY_STOPPING_PATIENCE
+        early_stopping_patience=EARLY_STOPPING_PATIENCE,
+        n_courts=N_COURTS
     )
     
     # ========================================================================

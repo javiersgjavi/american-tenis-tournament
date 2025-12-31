@@ -7,10 +7,10 @@ The project is organized into multiple files for better modularity:
 ```
 american-tenis-tournament/
 ├── src/
-│   ├── dataclasses.py          # Match and Calendar Pydantic models
+│   ├── dataclasses.py          # Match and Calendar Pydantic models (with n_courts support)
 │   ├── utils.py                # Utility functions (generation, validation)
-│   ├── genetic_algorithm.py    # GA logic and fitness functions
-│   └── printer.py              # Output formatting
+│   ├── genetic_algorithm.py    # GA logic and fitness functions (with round support)
+│   └── printer.py              # Output formatting (with round display)
 ├── tests/
 │   ├── test_match.py           # Tests for Match class
 │   ├── test_calendar.py        # Tests for Calendar class
@@ -42,8 +42,12 @@ Contains Pydantic data models for Match and Calendar.
 
 **Calendar (Pydantic Model)**
 - Represents complete tournament calendar (matrix of matches)
+- Supports multiple courts with `n_courts` parameter (default: 1)
 - Automatic validation of all matches
-- Methods: `get_match()`, `get_matches_per_player()`, `get_waiting_rounds_per_player()`, `is_valid()`, `__len__()`
+- Methods: 
+  - `get_match()`, `get_matches_per_player()`, `get_waiting_rounds_per_player()`, `is_valid()`, `__len__()`
+  - **NEW:** `get_total_rounds()`, `get_round_for_match()`, `get_matches_in_round()`
+  - **NEW:** `has_round_conflicts()`, `get_round_conflicts()` (for multiple courts)
 - Type hints: Uses native Python types (`dict[int, int]`, `dict[int, list[int]]`)
 
 ### 2. `src/utils.py`
@@ -70,15 +74,16 @@ Contains GA logic and fitness functions (to be implemented in phases 2-3).
 #### Functions (Phase 2)
 
 **Fitness Components:**
+- **NEW:** `calculate_round_conflict_penalty()` - HARD CONSTRAINT: Penalty for players in multiple matches same round
 - `calculate_balance_penalty()` - Penalty for unbalanced matches per player
 - `calculate_opponent_repetition_penalty()` - Penalty for repeated opponents
 - `calculate_team_repetition_penalty()` - Penalty for repeated teams
-- `calculate_waiting_penalty()` - Penalty for players waiting too long
-- `calculate_early_cut_bonus()` - Bonus for early cut points
+- `calculate_waiting_penalty()` - Penalty for players waiting too long (now in ROUNDS with n_courts > 1)
+- `calculate_early_cut_bonus()` - Bonus for early cut points (now at ROUND boundaries with n_courts > 1)
 
 **Analysis & Validation (Phase 4):**
-- `detect_cut_points()` - Find perfect and acceptable cut points
-- `validate_solution()` - Validate final solution quality
+- `detect_cut_points()` - Find perfect and acceptable cut points (returns ROUND numbers with n_courts > 1)
+- `validate_solution()` - Validate final solution quality (checks round conflicts with n_courts > 1)
 
 ### 4. `src/printer.py`
 
@@ -103,8 +108,9 @@ Main execution script that ties everything together.
 #### Structure
 
 **Configuration parameters:**
-- `N_PLAYERS = 7` - Number of players
-- `N_MATCHES = 50` - Matches to generate
+- `N_PLAYERS = 8` - Number of players
+- `N_ROUNDS = 10` - Number of rounds to play (total matches = N_ROUNDS × N_COURTS)
+- `N_COURTS = 2` - Number of courts available (1 = sequential, 2+ = simultaneous rounds)
 - `POPULATION_SIZE = 100` - GA population size
 - `GENERATIONS = 200` - Number of iterations
 - `MUTATION_RATE = 0.1` - Probability of mutation

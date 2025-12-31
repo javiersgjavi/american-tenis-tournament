@@ -39,6 +39,9 @@ def print_calendar(calendar: Calendar, start_index: int = 1) -> None:
     """
     Print the complete match calendar.
     
+    With multiple courts (n_courts > 1), matches are grouped by rounds
+    showing which matches are played simultaneously.
+    
     Args:
         calendar: Calendar to print
         start_index: Starting index for match numbering (default: 1)
@@ -51,14 +54,33 @@ def print_calendar(calendar: Calendar, start_index: int = 1) -> None:
     print("MATCH CALENDAR")
     print("="*60)
     
-    for i in range(len(calendar)):
-        match_str = match_vector_to_string(
-            calendar.matches[i],
-            calendar.n_players
-        )
-        print(f"Match {i + start_index}: {match_str}")
+    n_courts = calendar.n_courts
+    total_rounds = calendar.get_total_rounds()
     
-    print("="*60)
+    if n_courts > 1:
+        print(f"\nCourts: {n_courts} | Total Rounds: {total_rounds} | Total Matches: {len(calendar)}")
+        print("-" * 60)
+        
+        for round_num in range(1, total_rounds + 1):
+            print(f"\n📅 Round {round_num}:")
+            match_indices = calendar.get_matches_in_round(round_num)
+            
+            for court_num, match_idx in enumerate(match_indices, 1):
+                match_str = match_vector_to_string(
+                    calendar.matches[match_idx],
+                    calendar.n_players
+                )
+                print(f"  🎾 Court {court_num} - Match {match_idx + start_index}: {match_str}")
+    else:
+        # Single court - original behavior
+        for i in range(len(calendar)):
+            match_str = match_vector_to_string(
+                calendar.matches[i],
+                calendar.n_players
+            )
+            print(f"Match {i + start_index}: {match_str}")
+    
+    print("\n" + "="*60)
 
 
 def print_statistics(calendar: Calendar) -> None:
@@ -69,6 +91,7 @@ def print_statistics(calendar: Calendar) -> None:
     - Matches per player
     - Balance information
     - Total matches
+    - Round information (if multiple courts)
     
     Args:
         calendar: Calendar to analyze
@@ -82,6 +105,12 @@ def print_statistics(calendar: Calendar) -> None:
     
     print(f"\nTotal matches: {len(calendar)}")
     print(f"Total players: {calendar.n_players}")
+    
+    # Show round information if multiple courts
+    if calendar.n_courts > 1:
+        print(f"Courts: {calendar.n_courts}")
+        print(f"Total rounds: {calendar.get_total_rounds()}")
+        print(f"Matches per round: {calendar.n_courts}")
     
     print("\nMatches per player:")
     for player_idx in sorted(matches_per_player.keys()):
@@ -109,6 +138,9 @@ def print_cut_points(calendar: Calendar) -> None:
     """
     Print information about cut points in the calendar.
     
+    With multiple courts, cut points are at round boundaries (end of rounds).
+    The positions shown are ROUND NUMBERS, not match indices.
+    
     Args:
         calendar: Calendar to analyze
     """
@@ -118,10 +150,22 @@ def print_cut_points(calendar: Calendar) -> None:
     
     perfect_cuts, acceptable_cuts = detect_cut_points(calendar)
     
+    # Determine if we're using rounds or matches for display
+    if calendar.n_courts > 1:
+        unit = "round"
+        total_units = calendar.get_total_rounds()
+    else:
+        unit = "match"
+        total_units = len(calendar)
+    
     if len(perfect_cuts) > 0:
         print(f"\nPerfect cuts (all players equal): {len(perfect_cuts)}")
-        print(f"  Positions: {perfect_cuts}")  # Show ALL
-        print(f"  First perfect cut at match: {perfect_cuts[0]}")
+        print(f"  Positions ({unit}s): {perfect_cuts}")
+        print(f"  First perfect cut at {unit}: {perfect_cuts[0]}")
+        if calendar.n_courts > 1:
+            # Show which match this corresponds to
+            first_cut_match = perfect_cuts[0] * calendar.n_courts
+            print(f"    (after match {first_cut_match})")
     else:
         print("\nNo perfect cuts found.")
     
@@ -129,7 +173,7 @@ def print_cut_points(calendar: Calendar) -> None:
     acceptable_only = [c for c in acceptable_cuts if c not in perfect_cuts]
     if len(acceptable_only) > 0:
         print(f"\nAcceptable cuts (difference ≤ 1): {len(acceptable_only)}")
-        print(f"  Positions: {acceptable_only}")  # Show ALL
+        print(f"  Positions ({unit}s): {acceptable_only}")
     else:
         if len(perfect_cuts) == 0:
             print("No acceptable cuts found.")
@@ -142,7 +186,7 @@ def print_heuristic_details(calendar: Calendar) -> None:
     Print detailed statistics about heuristic objectives.
     
     Shows detailed information about:
-    - Waiting times per player
+    - Waiting times per player (in rounds when n_courts > 1)
     - Team repetitions
     - Opponent repetitions
     - Cut points flexibility
@@ -157,18 +201,24 @@ def print_heuristic_details(calendar: Calendar) -> None:
     print("="*60)
     
     # 1. WAITING TIMES ANALYSIS
-    print("\n📊 1. WAITING TIMES (Rounds without playing)")
+    if calendar.n_courts > 1:
+        print(f"\n📊 1. WAITING TIMES (Rounds without playing, {calendar.n_courts} courts)")
+    else:
+        print("\n📊 1. WAITING TIMES (Rounds without playing)")
     print("-" * 60)
     
+    # Use round-based waiting times
     waiting_rounds = calendar.get_waiting_rounds_per_player()
     
     if waiting_rounds:
         max_wait_overall = 0
         total_wait_time = 0
         player_max_waits = {}
+        has_any_gaps = False
         
         for player_idx, gaps in waiting_rounds.items():
             if gaps:
+                has_any_gaps = True
                 max_wait = max(gaps)
                 total_wait = sum(gaps)
                 avg_wait = total_wait / len(gaps) if gaps else 0
@@ -185,12 +235,15 @@ def print_heuristic_details(calendar: Calendar) -> None:
                 max_wait_overall = max(max_wait_overall, max_wait)
                 total_wait_time += total_wait
         
-        print(f"\n  📈 Waiting summary:")
-        print(f"    • Global maximum wait: {max_wait_overall} rounds")
-        if player_max_waits:
-            worst_player = max(player_max_waits, key=player_max_waits.get)
-            print(f"    • Player with longest wait: {worst_player} ({player_max_waits[worst_player]} rounds)")
-        print(f"    • Total waiting time: {total_wait_time} rounds")
+        if has_any_gaps:
+            print(f"\n  📈 Waiting summary:")
+            print(f"    • Global maximum wait: {max_wait_overall} rounds")
+            if player_max_waits:
+                worst_player = max(player_max_waits, key=player_max_waits.get)
+                print(f"    • Player with longest wait: {worst_player} ({player_max_waits[worst_player]} rounds)")
+            print(f"    • Total waiting time: {total_wait_time} rounds")
+        else:
+            print("  ✓ No waiting times (all play every round)")
     else:
         print("  ✓ No waiting times (all play consecutively)")
     
@@ -275,25 +328,39 @@ def print_heuristic_details(calendar: Calendar) -> None:
     
     perfect_cuts, acceptable_cuts = detect_cut_points(calendar)
     
-    n_matches = len(calendar)
-    flexibility_percent = (len(acceptable_cuts) / n_matches * 100) if n_matches > 0 else 0
+    # Determine unit for display
+    if calendar.n_courts > 1:
+        unit = "round"
+        total_units = calendar.get_total_rounds()
+    else:
+        unit = "match"
+        total_units = len(calendar)
     
-    print(f"  Total matches: {n_matches}")
+    flexibility_percent = (len(acceptable_cuts) / total_units * 100) if total_units > 0 else 0
+    
+    print(f"  Total matches: {len(calendar)}")
+    if calendar.n_courts > 1:
+        print(f"  Total rounds: {total_units}")
+        print(f"  Courts: {calendar.n_courts}")
     print(f"  Perfect cut points: {len(perfect_cuts)}")
     print(f"  Acceptable cut points: {len(acceptable_cuts)}")
-    print(f"  Flexibility: {flexibility_percent:.1f}% of calendar")
+    print(f"  Flexibility: {flexibility_percent:.1f}% of {unit}s")
     
     if perfect_cuts:
-        first_perfect_position = (perfect_cuts[0] / n_matches * 100) if n_matches > 0 else 0
+        first_perfect_position = (perfect_cuts[0] / total_units * 100) if total_units > 0 else 0
         print(f"\n  📍 First perfect cut:")
-        print(f"    • Position: match {perfect_cuts[0]}")
+        print(f"    • Position: {unit} {perfect_cuts[0]}")
         print(f"    • Percentage: {first_perfect_position:.1f}% of calendar")
+        if calendar.n_courts > 1:
+            print(f"    • After match: {perfect_cuts[0] * calendar.n_courts}")
     
     if acceptable_cuts:
-        first_acceptable_position = (acceptable_cuts[0] / n_matches * 100) if n_matches > 0 else 0
+        first_acceptable_position = (acceptable_cuts[0] / total_units * 100) if total_units > 0 else 0
         print(f"\n  📍 First acceptable cut:")
-        print(f"    • Position: match {acceptable_cuts[0]}")
+        print(f"    • Position: {unit} {acceptable_cuts[0]}")
         print(f"    • Percentage: {first_acceptable_position:.1f}% of calendar")
+        if calendar.n_courts > 1:
+            print(f"    • After match: {acceptable_cuts[0] * calendar.n_courts}")
     
     # Distribution analysis
     if len(acceptable_cuts) >= 2:
@@ -310,9 +377,9 @@ def print_heuristic_details(calendar: Calendar) -> None:
             std_dev = variance ** 0.5
             
             print(f"\n  📏 Distribution of cut points:")
-            print(f"    • Average gap: {avg_gap:.2f} matches")
-            print(f"    • Minimum gap: {min_gap} matches")
-            print(f"    • Maximum gap: {max_gap} matches")
+            print(f"    • Average gap: {avg_gap:.2f} {unit}s")
+            print(f"    • Minimum gap: {min_gap} {unit}s")
+            print(f"    • Maximum gap: {max_gap} {unit}s")
             print(f"    • Std deviation: {std_dev:.2f}")
             
             # Distribution quality assessment
@@ -386,7 +453,12 @@ def export_calendar_to_csv(
     include_cut_points: bool = True
 ) -> None:
     """
-    Export calendar to CSV file with optional cut point markers.
+    Export calendar to CSV file with round information and optional cut point markers.
+    
+    With multiple courts, the CSV includes:
+    - Round number for each match
+    - Court number within the round
+    - Cut point markers at round boundaries
     
     Args:
         calendar: Calendar to export
@@ -396,21 +468,29 @@ def export_calendar_to_csv(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # Detect cut points if needed
+    # Detect cut points if needed (returns round numbers with multiple courts)
     perfect_cuts, acceptable_cuts = [], []
     if include_cut_points:
         perfect_cuts, acceptable_cuts = detect_cut_points(calendar)
+    
+    n_courts = calendar.n_courts
     
     # Write CSV
     with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
         
-        # Header
-        writer.writerow(['Match #', 'Team 1', 'Team 2', 'Perfect Cut', 'Acceptable Cut'])
+        # Header - include Round and Court columns if multiple courts
+        if n_courts > 1:
+            writer.writerow(['Round', 'Court', 'Match #', 'Team 1', 'Team 2', 'Perfect Cut', 'Acceptable Cut'])
+        else:
+            writer.writerow(['Match #', 'Team 1', 'Team 2', 'Perfect Cut', 'Acceptable Cut'])
         
         # Matches
         for i, match_vector in enumerate(calendar.matches):
             match_num = i + 1
+            round_num = calendar.get_round_for_match(i)
+            court_num = (i % n_courts) + 1
+            
             match_str = match_vector_to_string(match_vector, calendar.n_players)
             
             # Parse teams from string
@@ -418,11 +498,25 @@ def export_calendar_to_csv(
             team1 = parts[0].strip('()')
             team2 = parts[1].strip('()')
             
-            # Check if this is a cut point
-            is_perfect = '✓' if match_num in perfect_cuts else ''
-            is_acceptable = '✓' if match_num in acceptable_cuts else ''
+            # For cut points: check round number (cut points are at round boundaries)
+            # A round is a cut point if it's in the list (detected at end of that round)
+            # Mark the LAST match of each round as the cut point
+            is_last_match_of_round = (court_num == n_courts) or (match_num == len(calendar))
             
-            writer.writerow([match_num, team1, team2, is_perfect, is_acceptable])
+            if is_last_match_of_round:
+                is_perfect = '✓' if round_num in perfect_cuts else ''
+                is_acceptable = '✓' if round_num in acceptable_cuts else ''
+            else:
+                is_perfect = ''
+                is_acceptable = ''
+            
+            if n_courts > 1:
+                writer.writerow([round_num, court_num, match_num, team1, team2, is_perfect, is_acceptable])
+            else:
+                # For single court, round_num == match_num for cut point checking
+                is_perfect = '✓' if match_num in perfect_cuts else ''
+                is_acceptable = '✓' if match_num in acceptable_cuts else ''
+                writer.writerow([match_num, team1, team2, is_perfect, is_acceptable])
 
 
 def export_results_to_txt(

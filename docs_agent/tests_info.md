@@ -13,9 +13,9 @@ This document provides detailed information about the test suite, what is being 
 
 ## Test Suite Summary
 
-**Total Tests:** 138
+**Total Tests:** 178
 **Status:** ✅ All passing
-**Coverage:** Phase 1-6 Complete (Core, Fitness, GA, Cut Points, Output, End-to-End, File Export)
+**Coverage:** Phase 1-9 Complete (Core, Fitness, GA, Cut Points, Output, End-to-End, File Export, Multiple Courts)
 
 ### Test Files
 
@@ -26,6 +26,7 @@ This document provides detailed information about the test suite, what is being 
 5. `tests/test_cut_points.py` - 17 tests
 6. `tests/test_output.py` - 31 tests (18 original + 13 export tests)
 7. `tests/test_main.py` - 15 tests
+8. `tests/test_multiple_courts.py` - 32 tests (Multiple courts and rounds)
 
 ---
 
@@ -966,7 +967,230 @@ Tests for unified export functionality.
 
 ---
 
-**Last Updated:** 2025-11-29  
-**Phase:** 8.1 - Enhanced Optimization and File Export  
-**Test Count:** 138 tests, all passing ✅
+---
+
+## 9. Multiple Courts Tests (`tests/test_multiple_courts.py`)
+
+### 9.1 `TestMultipleCourtsHelpers` Class (6 tests)
+
+Tests for helper functions related to multiple courts.
+
+#### ✅ `test_minimum_players_for_1_court`
+- **Purpose:** Verify minimum players for 1 court is 4
+- **Expected:** Returns 4
+
+#### ✅ `test_minimum_players_for_2_courts`
+- **Purpose:** Verify minimum players for 2 courts is 8
+- **Expected:** Returns 8
+
+#### ✅ `test_minimum_players_for_3_courts`
+- **Purpose:** Verify minimum players for 3 courts is 12
+- **Expected:** Returns 12
+
+#### ✅ `test_can_use_multiple_courts_valid`
+- **Purpose:** Verify 8 players can use 2 courts
+- **Expected:** Returns True
+
+#### ✅ `test_can_use_multiple_courts_invalid`
+- **Purpose:** Verify 6 players cannot use 2 courts
+- **Expected:** Returns False
+
+#### ✅ `test_can_use_single_court_with_4_players`
+- **Purpose:** Verify 4 players can use 1 court
+- **Expected:** Returns True
+
+---
+
+### 9.2 `TestCalendarWithCourts` Class (8 tests)
+
+Tests for Calendar class with n_courts parameter.
+
+#### ✅ `test_create_calendar_with_1_court_default`
+- **Purpose:** Verify default n_courts is 1
+- **Expected:** calendar.n_courts == 1
+
+#### ✅ `test_create_calendar_with_2_courts`
+- **Purpose:** Verify creating calendar with 2 courts
+- **Expected:** Calendar created successfully with n_courts=2
+
+#### ✅ `test_get_total_rounds_single_court`
+- **Purpose:** Verify get_total_rounds with 1 court
+- **Expected:** 5 matches → 5 rounds
+
+#### ✅ `test_get_total_rounds_two_courts`
+- **Purpose:** Verify get_total_rounds with 2 courts
+- **Expected:** 6 matches / 2 courts = 3 rounds
+
+#### ✅ `test_get_round_for_match_single_court`
+- **Purpose:** Verify get_round_for_match with 1 court
+- **Expected:** Match 0 → Round 1, Match 1 → Round 2, etc.
+
+#### ✅ `test_get_round_for_match_two_courts`
+- **Purpose:** Verify get_round_for_match with 2 courts
+- **Expected:** Matches 0,1 → Round 1, Matches 2,3 → Round 2
+
+#### ✅ `test_get_matches_in_round_single_court`
+- **Purpose:** Verify get_matches_in_round with 1 court
+- **Expected:** Round 1 → [0], Round 2 → [1], etc.
+
+#### ✅ `test_get_matches_in_round_two_courts`
+- **Purpose:** Verify get_matches_in_round with 2 courts
+- **Expected:** Round 1 → [0, 1], Round 2 → [2, 3]
+
+---
+
+### 9.3 `TestRoundConflicts` Class (4 tests)
+
+Tests for round conflict detection.
+
+#### ✅ `test_no_conflict_single_court`
+- **Purpose:** Verify no conflict with single court
+- **Expected:** has_round_conflicts() returns False
+
+#### ✅ `test_no_conflict_different_players_per_round`
+- **Purpose:** Verify no conflict when different players in same round
+- **Expected:** has_round_conflicts() returns False
+
+#### ✅ `test_conflict_same_player_in_round`
+- **Purpose:** Verify conflict when same player in two matches of same round
+- **Expected:** has_round_conflicts() returns True
+
+#### ✅ `test_get_round_conflicts_details`
+- **Purpose:** Verify getting detailed conflict information
+- **Expected:** Returns correct round, player, and count
+
+---
+
+### 9.4 `TestRoundConflictPenalty` Class (2 tests)
+
+Tests for calculate_round_conflict_penalty function.
+
+#### ✅ `test_no_conflict_zero_penalty`
+- **Purpose:** Verify zero penalty when no conflicts
+- **Expected:** penalty == 0.0
+
+#### ✅ `test_conflict_infinite_penalty`
+- **Purpose:** Verify infinite penalty when conflict exists
+- **Expected:** penalty == float('inf')
+
+---
+
+### 9.5 `TestWaitingPenaltyWithRounds` Class (1 test)
+
+Tests for waiting penalty with multiple courts.
+
+#### ✅ `test_all_players_play_every_round_zero_waiting`
+- **Purpose:** Verify zero waiting when all players play every round
+- **Expected:** With 8 players and 2 courts, penalty == 0.0
+
+---
+
+### 9.6 `TestCutPointsWithRounds` Class (1 test)
+
+Tests for cut points detection with multiple courts.
+
+#### ✅ `test_cut_points_at_round_boundaries_only`
+- **Purpose:** Verify cut points are only at round boundaries
+- **Expected:** Cut points are round numbers (1, 2, 3, ...)
+
+---
+
+### 9.7 `TestGeneticAlgorithmWithRounds` Class (4 tests)
+
+Tests for GeneticAlgorithm with n_rounds parameter.
+
+#### ✅ `test_create_ga_with_n_rounds`
+- **Purpose:** Verify creating GA with n_rounds parameter
+- **Expected:** n_matches = n_rounds × n_courts
+
+#### ✅ `test_ga_validates_minimum_players`
+- **Purpose:** Verify GA validates minimum players for courts
+- **Expected:** Raises ValueError for insufficient players
+
+#### ✅ `test_ga_produces_valid_calendars_with_courts`
+- **Purpose:** Verify GA produces valid calendars with multiple courts
+- **Expected:** Valid calendar with no round conflicts
+
+#### ✅ `test_ga_single_court_backward_compatible`
+- **Purpose:** Verify GA with n_courts=1 is backward compatible
+- **Expected:** Works identically to previous behavior
+
+---
+
+### 9.8 `TestValidateSolutionWithRounds` Class (2 tests)
+
+Tests for validate_solution with multiple courts.
+
+#### ✅ `test_validate_detects_round_conflicts`
+- **Purpose:** Verify validation detects round conflicts
+- **Expected:** is_valid=False, quality="REJECTED"
+
+#### ✅ `test_validate_accepts_valid_multi_court_calendar`
+- **Purpose:** Verify validation accepts valid multi-court calendar
+- **Expected:** is_valid=True with acceptable quality
+
+---
+
+### 9.9 `TestFitnessWithRounds` Class (2 tests)
+
+Tests for fitness calculation with multiple courts.
+
+#### ✅ `test_fitness_negative_infinity_for_round_conflict`
+- **Purpose:** Verify calendar with round conflict has -inf fitness
+- **Expected:** fitness == float('-inf')
+
+#### ✅ `test_fitness_finite_for_valid_calendar`
+- **Purpose:** Verify valid calendar has finite fitness
+- **Expected:** fitness > float('-inf')
+
+---
+
+### 9.10 `TestIntegrationMultipleCourts` Class (2 tests)
+
+Integration tests for multiple courts functionality.
+
+#### ✅ `test_full_optimization_with_2_courts`
+- **Purpose:** Verify full optimization with 2 courts produces valid result
+- **Expected:** Valid calendar with no conflicts and reasonable balance
+
+#### ✅ `test_8_players_2_courts_all_play_every_round`
+- **Purpose:** Verify with 8 players and 2 courts, all can play every round
+- **Expected:** Very low or zero waiting time
+
+---
+
+## Test Coverage by Feature - Multiple Courts
+
+### ✅ Round Management
+- Calculate total rounds from matches and courts
+- Get round number for any match index
+- Get all matches in a specific round
+- Round boundaries correctly computed
+
+### ✅ Conflict Detection
+- Detect when a player is in multiple matches in same round
+- Return detailed conflict information (round, player, count)
+- Single court mode never has conflicts
+
+### ✅ Fitness Integration
+- Round conflict penalty (infinite for conflicts)
+- Waiting penalty calculated in rounds
+- Cut points only at round boundaries
+
+### ✅ GA Integration
+- GA accepts n_rounds and n_courts parameters
+- Validates minimum players for court count
+- Generates valid calendars without conflicts
+- Backward compatible with n_courts=1
+
+### ✅ Validation
+- validate_solution detects round conflicts
+- Accepts valid multi-court calendars
+- Appropriate quality ratings
+
+---
+
+**Last Updated:** 2025-12-31  
+**Phase:** 9 - Multiple Courts and Round-based Play  
+**Test Count:** 178 tests, all passing ✅
 

@@ -9,13 +9,35 @@ from collections import defaultdict
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
-from .dataclasses import Match, Calendar
+from .dataclasses import Match, Calendar, can_use_multiple_courts
 from .utils import generate_random_match, is_valid_match
 
 
 # ============================================================================
 # FITNESS FUNCTIONS (PHASE 2)
 # ============================================================================
+
+def calculate_round_conflict_penalty(calendar: Calendar) -> float:
+    """
+    Calculate penalty for players appearing in multiple matches within the same round.
+    
+    This is a HARD CONSTRAINT. If any player is scheduled to play in two or more
+    matches simultaneously (same round, different courts), the calendar is INVALID.
+    
+    Args:
+        calendar: Calendar object to evaluate
+        
+    Returns:
+        float('inf') if conflicts exist, 0.0 otherwise
+    """
+    if calendar.n_courts <= 1:
+        return 0.0  # No conflicts possible with single court
+    
+    if calendar.has_round_conflicts():
+        return float('inf')
+    
+    return 0.0
+
 
 def calculate_balance_penalty(calendar: Calendar) -> float:
     """
@@ -121,15 +143,20 @@ def calculate_team_repetition_penalty(calendar: Calendar) -> float:
 
 def calculate_waiting_penalty(calendar: Calendar) -> float:
     """
-    Calculate penalty for players waiting too long between matches.
+    Calculate penalty for players waiting too long between rounds.
     
-    For each player, we find the gaps between consecutive matches they play.
+    With multiple courts (n_courts > 1), waiting is measured in ROUNDS, not matches.
+    A player is considered to play in a round if they have at least one match in that round.
+    
+    For each player, we find the gaps between consecutive rounds they play.
     The penalty is the sum of gap² for all gaps of all players.
     
-    Formula: penalty = Σ Σ (gap)² for all players and their gaps
+    Formula: penalty = Σ Σ (gap)² for all players and their round gaps
     
-    Example: If player A plays matches [0, 3, 5], gaps are [2, 1],
-             penalty contribution = 2² + 1² = 5
+    Example with n_courts=2:
+        - Round 1: Matches 1-2, Round 2: Matches 3-4, Round 3: Matches 5-6
+        - If player A plays in round 1 and round 3, gap is [1] (skipped round 2)
+        - Penalty contribution = 1² = 1
     
     Args:
         calendar: Calendar object to evaluate
@@ -137,6 +164,7 @@ def calculate_waiting_penalty(calendar: Calendar) -> float:
     Returns:
         Penalty value (0 = no waiting, higher = more waiting)
     """
+    # get_waiting_rounds_per_player() already calculates gaps in terms of rounds
     waiting_rounds = calendar.get_waiting_rounds_per_player()
     
     penalty = 0.0
@@ -151,8 +179,12 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
     """
     Calculate bonus for having cut points early in the calendar and maximizing total cut points.
     
-    A cut point is an index where the tournament can be stopped with all
+    A cut point is a position where the tournament can be stopped with all
     players having played a balanced number of matches.
+    
+    IMPORTANT: With multiple courts (n_courts > 1), cut points are ONLY evaluated
+    at round boundaries (end of complete rounds). It doesn't make sense to stop
+    in the middle of a round where some courts have played and others haven't.
     
     Perfect cut: max_difference = 0 (all players played same number)
     Acceptable cut: max_difference ≤ 1
@@ -163,7 +195,7 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
     3. Calendars with well-distributed cut points (uniform spacing)
     
     Formula: 
-        bonus = 1000 / (first_perfect_cut + 1) + 
+        bonus = 1000 / (first_perfect_cut_round + 1) + 
                 perfect_cut_count * 20.0 + 
                 acceptable_cut_count * 5.0 +
                 distribution_bonus
@@ -184,8 +216,16 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
     perfect_cut_positions = []
     acceptable_cut_positions = []
     
-    # Check each position in the calendar
-    for cut_index in range(1, len(calendar) + 1):
+    n_courts = calendar.n_courts
+    total_rounds = calendar.get_total_rounds()
+    
+    # Check cut points only at round boundaries
+    for round_num in range(1, total_rounds + 1):
+        # Get the match index at the end of this round
+        cut_index = round_num * n_courts
+        # Make sure we don't exceed the calendar length (last round might be incomplete)
+        cut_index = min(cut_index, len(calendar))
+        
         # Count matches per player up to this point
         matches_count = {i: 0 for i in range(calendar.n_players)}
         
@@ -201,21 +241,21 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
         # Check for perfect cut
         if max_diff == 0:
             if first_perfect_cut is None:
-                first_perfect_cut = cut_index
+                first_perfect_cut = round_num  # Store round number, not match index
             perfect_cut_count += 1
-            perfect_cut_positions.append(cut_index)
+            perfect_cut_positions.append(round_num)
             acceptable_cut_count += 1  # Perfect cuts are also acceptable
-            acceptable_cut_positions.append(cut_index)
+            acceptable_cut_positions.append(round_num)
         # Check for acceptable cut (only if not perfect)
         elif max_diff <= 1:
             if first_acceptable_cut is None:
-                first_acceptable_cut = cut_index
+                first_acceptable_cut = round_num
             acceptable_cut_count += 1
-            acceptable_cut_positions.append(cut_index)
+            acceptable_cut_positions.append(round_num)
     
     bonus = 0.0
     
-    # Main bonus: reward first perfect cut (inversely proportional to position)
+    # Main bonus: reward first perfect cut (inversely proportional to round position)
     if first_perfect_cut is not None:
         bonus += 1000.0 / first_perfect_cut
     elif first_acceptable_cut is not None:
@@ -224,13 +264,13 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
     
     # IMPROVED: Significant bonus for total number of cut points
     # This maximizes flexibility - more cut points = more options to stop tournament
-    bonus += perfect_cut_count * 20.0  # Increased from 10.0
-    bonus += acceptable_cut_count * 5.0  # Additional bonus for all acceptable cuts
+    bonus += perfect_cut_count * 20.0
+    bonus += acceptable_cut_count * 5.0
     
-    # NEW: Bonus for well-distributed cut points
+    # Bonus for well-distributed cut points
     # Calculate distribution quality by measuring gaps between consecutive cuts
     if len(acceptable_cut_positions) >= 2:
-        # Calculate gaps between consecutive cut points
+        # Calculate gaps between consecutive cut points (in rounds)
         gaps = []
         for i in range(len(acceptable_cut_positions) - 1):
             gap = acceptable_cut_positions[i + 1] - acceptable_cut_positions[i]
@@ -269,6 +309,10 @@ def calculate_fitness(
     Fitness is calculated as negative sum of weighted penalties plus bonus.
     Higher fitness is better.
     
+    HARD CONSTRAINTS (return -inf if violated):
+    - All matches must be valid (4 different players)
+    - No round conflicts (player in multiple matches of same round)
+    
     Formula:
         fitness = -(
             w1 * penalty_balance +
@@ -286,11 +330,16 @@ def calculate_fitness(
         weight_early_cut: Weight for early cut bonus (default: 50.0)
         
     Returns:
-        Fitness value (higher is better)
+        Fitness value (higher is better, -inf for invalid calendars)
     """
-    # Validate calendar first
+    # HARD CONSTRAINT 1: All matches must be valid
     if not calendar.is_valid():
-        return float('-inf')  # Invalid calendar gets worst possible fitness
+        return float('-inf')
+    
+    # HARD CONSTRAINT 2: No round conflicts (player in multiple matches same round)
+    penalty_round_conflict = calculate_round_conflict_penalty(calendar)
+    if penalty_round_conflict == float('inf'):
+        return float('-inf')
     
     # Calculate all penalties
     penalty_balance = calculate_balance_penalty(calendar)
@@ -320,16 +369,20 @@ def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
     """
     Detect perfect and acceptable cut points in a calendar.
     
-    A cut point is an index where the tournament can be stopped while
+    A cut point is a position where the tournament can be stopped while
     maintaining balance:
     - Perfect cut: max_difference = 0 (all players played same number)
     - Acceptable cut: max_difference ≤ 1
+    
+    IMPORTANT: With multiple courts (n_courts > 1), cut points are ONLY evaluated
+    at round boundaries (end of complete rounds). The returned indices are
+    ROUND NUMBERS (1-based), not match indices.
     
     Args:
         calendar: Calendar to analyze
         
     Returns:
-        Tuple of (perfect_cuts, acceptable_cuts) where each is a list of indices
+        Tuple of (perfect_cuts, acceptable_cuts) where each is a list of round numbers
     """
     perfect_cuts = []
     acceptable_cuts = []
@@ -337,8 +390,16 @@ def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
     if len(calendar) == 0:
         return perfect_cuts, acceptable_cuts
     
-    # Check each position in the calendar
-    for cut_index in range(1, len(calendar) + 1):
+    n_courts = calendar.n_courts
+    total_rounds = calendar.get_total_rounds()
+    
+    # Check cut points only at round boundaries
+    for round_num in range(1, total_rounds + 1):
+        # Get the match index at the end of this round
+        cut_index = round_num * n_courts
+        # Make sure we don't exceed the calendar length (last round might be incomplete)
+        cut_index = min(cut_index, len(calendar))
+        
         # Count matches per player up to this point
         matches_count = {i: 0 for i in range(calendar.n_players)}
         
@@ -354,11 +415,11 @@ def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
         
         # Check for perfect cut
         if max_diff == 0:
-            perfect_cuts.append(cut_index)
-            acceptable_cuts.append(cut_index)  # Perfect is also acceptable
+            perfect_cuts.append(round_num)
+            acceptable_cuts.append(round_num)  # Perfect is also acceptable
         # Check for acceptable cut
         elif max_diff <= 1:
-            acceptable_cuts.append(cut_index)
+            acceptable_cuts.append(round_num)
     
     return perfect_cuts, acceptable_cuts
 
@@ -367,11 +428,14 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
     """
     Validate the quality of a calendar solution.
     
-    Quality levels:
-    - EXCELLENT: First perfect cut in first 30% of matches
-    - GOOD: First perfect cut in first 50% of matches
-    - ACCEPTABLE: First acceptable cut in first 60% of matches
+    Quality levels (based on round position, not match position):
+    - EXCELLENT: First perfect cut in first 30% of rounds
+    - GOOD: First perfect cut in first 50% of rounds
+    - ACCEPTABLE: First acceptable cut in first 60% of rounds
     - REJECTED: No cut points or first cut after 60%
+    
+    Also validates that there are no round conflicts (player in multiple
+    matches of the same round) when using multiple courts.
     
     Args:
         calendar: Calendar to validate
@@ -386,24 +450,34 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
     if not calendar.is_valid():
         return False, "REJECTED", "Calendar contains invalid matches"
     
-    # Detect cut points
+    # Check for round conflicts (only relevant with multiple courts)
+    if calendar.n_courts > 1 and calendar.has_round_conflicts():
+        conflicts = calendar.get_round_conflicts()
+        return (
+            False,
+            "REJECTED",
+            f"Calendar has round conflicts: {len(conflicts)} player(s) scheduled "
+            f"for multiple matches in the same round"
+        )
+    
+    # Detect cut points (returns round numbers, not match indices)
     perfect_cuts, acceptable_cuts = detect_cut_points(calendar)
     
-    n_matches = len(calendar)
+    total_rounds = calendar.get_total_rounds()
     
-    if n_matches == 0:
+    if total_rounds == 0:
         return False, "REJECTED", "Calendar is empty"
     
     # Check for perfect cuts
     if len(perfect_cuts) > 0:
         first_perfect = perfect_cuts[0]
-        position_percent = (first_perfect / n_matches) * 100
+        position_percent = (first_perfect / total_rounds) * 100
         
         if position_percent <= 30:
             return (
                 True,
                 "EXCELLENT",
-                f"Excellent! First perfect cut at match {first_perfect} "
+                f"Excellent! First perfect cut at round {first_perfect} "
                 f"({position_percent:.1f}% of calendar). "
                 f"Total perfect cuts: {len(perfect_cuts)}"
             )
@@ -411,7 +485,7 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
             return (
                 True,
                 "GOOD",
-                f"Good solution. First perfect cut at match {first_perfect} "
+                f"Good solution. First perfect cut at round {first_perfect} "
                 f"({position_percent:.1f}% of calendar). "
                 f"Total perfect cuts: {len(perfect_cuts)}"
             )
@@ -419,7 +493,7 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
             return (
                 True,
                 "ACCEPTABLE",
-                f"Acceptable solution. First perfect cut at match {first_perfect} "
+                f"Acceptable solution. First perfect cut at round {first_perfect} "
                 f"({position_percent:.1f}% of calendar). "
                 f"Total perfect cuts: {len(perfect_cuts)}"
             )
@@ -427,13 +501,13 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
     # Check for acceptable cuts
     if len(acceptable_cuts) > 0:
         first_acceptable = acceptable_cuts[0]
-        position_percent = (first_acceptable / n_matches) * 100
+        position_percent = (first_acceptable / total_rounds) * 100
         
         if position_percent <= 60:
             return (
                 True,
                 "ACCEPTABLE",
-                f"Acceptable solution. First acceptable cut at match {first_acceptable} "
+                f"Acceptable solution. First acceptable cut at round {first_acceptable} "
                 f"({position_percent:.1f}% of calendar). "
                 f"Total acceptable cuts: {len(acceptable_cuts)}"
             )
@@ -441,7 +515,7 @@ def validate_solution(calendar: Calendar) -> tuple[bool, str, str]:
             return (
                 False,
                 "REJECTED",
-                f"Solution rejected. First acceptable cut too late at match {first_acceptable} "
+                f"Solution rejected. First acceptable cut too late at round {first_acceptable} "
                 f"({position_percent:.1f}% of calendar)"
             )
     
@@ -466,12 +540,18 @@ class GeneticAlgorithm:
     - Single-point crossover for recombination
     - Multiple mutation operators (swap, replace, regenerate)
     - Elitism to preserve best solutions
+    
+    With multiple courts (n_courts > 1):
+    - Matches are grouped into rounds
+    - n_rounds specifies the number of rounds to play
+    - Total matches = n_rounds * n_courts
+    - Round conflicts (player in multiple matches same round) are invalid
     """
     
     def __init__(
         self,
         n_players: int,
-        n_matches: int,
+        n_rounds: int,
         population_size: int = 100,
         generations: int = 200,
         mutation_rate: float = 0.1,
@@ -483,14 +563,15 @@ class GeneticAlgorithm:
         weight_waiting: float = 5.0,
         weight_early_cut: float = 50.0,
         n_jobs: int = 1,
-        early_stopping_patience: int | None = None
+        early_stopping_patience: int | None = None,
+        n_courts: int = 1
     ):
         """
         Initialize the Genetic Algorithm.
         
         Args:
             n_players: Number of players in the tournament
-            n_matches: Number of matches to generate
+            n_rounds: Number of rounds to play (total matches = n_rounds * n_courts)
             population_size: Size of the population
             generations: Number of generations to evolve
             mutation_rate: Probability of mutation (0.0 to 1.0)
@@ -503,9 +584,26 @@ class GeneticAlgorithm:
             weight_early_cut: Weight for early cut bonus
             n_jobs: Number of parallel jobs for fitness calculation (-1 for all cores, 1 for sequential)
             early_stopping_patience: Number of generations without improvement before stopping (None to disable)
+            n_courts: Number of courts available (default: 1 = sequential play)
         """
         self.n_players = n_players
-        self.n_matches = n_matches
+        self.n_courts = n_courts
+        
+        # Validate court configuration
+        if n_courts < 1:
+            raise ValueError(f"n_courts must be >= 1, got {n_courts}")
+        
+        if not can_use_multiple_courts(n_players, n_courts):
+            min_players = 4 * n_courts
+            raise ValueError(
+                f"Not enough players for {n_courts} courts. "
+                f"Need at least {min_players} players, got {n_players}"
+            )
+        
+        # Store rounds and calculate total matches
+        self.n_rounds = n_rounds
+        self.n_matches = n_rounds * n_courts
+        
         self.population_size = population_size
         self.generations = generations
         self.mutation_rate = mutation_rate
@@ -528,23 +626,90 @@ class GeneticAlgorithm:
         """
         Initialize a random population of calendars.
         
+        With multiple courts, generates calendars where no player appears
+        in multiple matches of the same round (no round conflicts).
+        
         Returns:
             List of Calendar objects
         """
         population = []
         for _ in range(self.population_size):
-            # Generate random matches for this calendar
-            matches = []
-            for _ in range(self.n_matches):
-                match_vector = generate_random_match(self.n_players)
-                matches.append(match_vector)
-            
-            # Create Calendar object
-            matches_array = np.array(matches)
-            calendar = Calendar(matches=matches_array, n_players=self.n_players)
+            calendar = self._generate_valid_calendar()
             population.append(calendar)
         
         return population
+    
+    def _generate_valid_calendar(self, max_attempts: int = 100) -> Calendar:
+        """
+        Generate a single valid calendar without round conflicts.
+        
+        Args:
+            max_attempts: Maximum attempts per round to avoid conflicts
+            
+        Returns:
+            Valid Calendar object
+        """
+        matches = []
+        
+        for round_num in range(self.n_rounds):
+            round_matches = self._generate_round_without_conflicts(max_attempts)
+            matches.extend(round_matches)
+        
+        matches_array = np.array(matches)
+        return Calendar(
+            matches=matches_array,
+            n_players=self.n_players,
+            n_courts=self.n_courts
+        )
+    
+    def _generate_round_without_conflicts(self, max_attempts: int = 100) -> list[np.ndarray]:
+        """
+        Generate matches for a single round without player conflicts.
+        
+        Each player can only appear in one match per round.
+        
+        Args:
+            max_attempts: Maximum attempts to generate a valid round
+            
+        Returns:
+            List of match vectors for the round
+        """
+        if self.n_courts == 1:
+            # Single court - no conflicts possible
+            return [generate_random_match(self.n_players)]
+        
+        for _ in range(max_attempts):
+            round_matches = []
+            players_used = set()
+            success = True
+            
+            for court in range(self.n_courts):
+                # Try to find a valid match for this court
+                match_found = False
+                for _ in range(50):  # Attempts to find a match
+                    match_vector = generate_random_match(self.n_players)
+                    # Get players in this match
+                    players = set()
+                    for i in range(self.n_players):
+                        if match_vector[i] == 1 or match_vector[self.n_players + i] == 1:
+                            players.add(i)
+                    
+                    # Check if any player is already used in this round
+                    if not players.intersection(players_used):
+                        round_matches.append(match_vector)
+                        players_used.update(players)
+                        match_found = True
+                        break
+                
+                if not match_found:
+                    success = False
+                    break
+            
+            if success:
+                return round_matches
+        
+        # Fallback: generate random matches (may have conflicts, but fitness will be -inf)
+        return [generate_random_match(self.n_players) for _ in range(self.n_courts)]
     
     def calculate_fitness_for_calendar(self, calendar: Calendar) -> float:
         """
@@ -600,6 +765,9 @@ class GeneticAlgorithm:
         """
         Perform single-point crossover between two parents.
         
+        With multiple courts, crossover happens at ROUND boundaries to maintain
+        round integrity and minimize creation of invalid calendars.
+        
         Args:
             parent1: First parent calendar
             parent2: Second parent calendar
@@ -607,18 +775,19 @@ class GeneticAlgorithm:
         Returns:
             Tuple of (child1, child2)
         """
-        # Check if crossover should happen or if we have only 1 match
-        if random.random() > self.crossover_rate or self.n_matches <= 1:
+        # Check if crossover should happen or if we have only 1 round
+        if random.random() > self.crossover_rate or self.n_rounds <= 1:
             # No crossover, return copies of parents
             child1_matches = np.copy(parent1.matches)
             child2_matches = np.copy(parent2.matches)
             return (
-                Calendar(matches=child1_matches, n_players=self.n_players),
-                Calendar(matches=child2_matches, n_players=self.n_players)
+                Calendar(matches=child1_matches, n_players=self.n_players, n_courts=self.n_courts),
+                Calendar(matches=child2_matches, n_players=self.n_players, n_courts=self.n_courts)
             )
         
-        # Perform single-point crossover
-        crossover_point = random.randint(1, self.n_matches - 1)
+        # Choose crossover point at round boundary
+        crossover_round = random.randint(1, self.n_rounds - 1)
+        crossover_point = crossover_round * self.n_courts
         
         # Create children by combining parent segments
         child1_matches = np.vstack([
@@ -632,18 +801,21 @@ class GeneticAlgorithm:
         ])
         
         return (
-            Calendar(matches=child1_matches, n_players=self.n_players),
-            Calendar(matches=child2_matches, n_players=self.n_players)
+            Calendar(matches=child1_matches, n_players=self.n_players, n_courts=self.n_courts),
+            Calendar(matches=child2_matches, n_players=self.n_players, n_courts=self.n_courts)
         )
     
     def mutate(self, calendar: Calendar) -> Calendar:
         """
-        Mutate a calendar using one of three mutation operators.
+        Mutate a calendar using one of several mutation operators.
         
         Mutation types:
-        1. Replace match: Replace one match with a new random match
-        2. Swap matches: Swap the order of two matches
-        3. Regenerate match: Completely regenerate a random match
+        1. Replace round: Replace all matches in a round with new valid ones
+        2. Swap rounds: Swap the order of two rounds (preserves round integrity)
+        3. Regenerate round: Regenerate a random round without conflicts
+        
+        With n_courts > 1, mutations operate on entire ROUNDS to maintain
+        round integrity and avoid creating invalid calendars.
         
         Args:
             calendar: Calendar to mutate
@@ -655,29 +827,39 @@ class GeneticAlgorithm:
         if random.random() > self.mutation_rate:
             # No mutation, return copy
             matches_copy = np.copy(calendar.matches)
-            return Calendar(matches=matches_copy, n_players=self.n_players)
+            return Calendar(matches=matches_copy, n_players=self.n_players, n_courts=self.n_courts)
         
         # Create a copy of matches
         mutated_matches = np.copy(calendar.matches)
         
         # Choose mutation type randomly
-        mutation_type = random.choice(['replace', 'swap', 'regenerate'])
+        mutation_type = random.choice(['replace_round', 'swap_rounds', 'regenerate_round'])
         
-        if mutation_type == 'replace' or mutation_type == 'regenerate':
-            # Replace/regenerate a random match
-            match_idx = random.randint(0, self.n_matches - 1)
-            mutated_matches[match_idx] = generate_random_match(self.n_players)
+        if mutation_type == 'replace_round' or mutation_type == 'regenerate_round':
+            # Replace/regenerate all matches in a random round
+            round_idx = random.randint(0, self.n_rounds - 1)
+            start_match_idx = round_idx * self.n_courts
+            
+            # Generate new valid round without conflicts
+            new_round_matches = self._generate_round_without_conflicts()
+            for i, match_vector in enumerate(new_round_matches):
+                mutated_matches[start_match_idx + i] = match_vector
         
-        elif mutation_type == 'swap':
-            # Swap two random matches
-            if self.n_matches >= 2:
-                idx1, idx2 = random.sample(range(self.n_matches), 2)
-                mutated_matches[idx1], mutated_matches[idx2] = (
-                    mutated_matches[idx2].copy(),
-                    mutated_matches[idx1].copy()
-                )
+        elif mutation_type == 'swap_rounds':
+            # Swap two random rounds
+            if self.n_rounds >= 2:
+                round1, round2 = random.sample(range(self.n_rounds), 2)
+                start1 = round1 * self.n_courts
+                start2 = round2 * self.n_courts
+                
+                # Swap all matches between the two rounds
+                for i in range(self.n_courts):
+                    mutated_matches[start1 + i], mutated_matches[start2 + i] = (
+                        mutated_matches[start2 + i].copy(),
+                        mutated_matches[start1 + i].copy()
+                    )
         
-        return Calendar(matches=mutated_matches, n_players=self.n_players)
+        return Calendar(matches=mutated_matches, n_players=self.n_players, n_courts=self.n_courts)
     
     def run(self, verbose: bool = True) -> Calendar:
         """
@@ -692,6 +874,10 @@ class GeneticAlgorithm:
         # Initialize population
         if verbose:
             print(f"Initializing population of {self.population_size} individuals...")
+            if self.n_courts > 1:
+                print(f"  Courts: {self.n_courts}")
+                print(f"  Rounds: {self.n_rounds}")
+                print(f"  Matches: {self.n_matches} ({self.n_courts} matches per round)")
         
         population = self.initialize_population()
         
@@ -768,7 +954,7 @@ class GeneticAlgorithm:
             for idx in elite_indices:
                 matches_copy = np.copy(population[idx].matches)
                 new_population.append(
-                    Calendar(matches=matches_copy, n_players=self.n_players)
+                    Calendar(matches=matches_copy, n_players=self.n_players, n_courts=self.n_courts)
                 )
             
             # Generate offspring to fill the rest of the population

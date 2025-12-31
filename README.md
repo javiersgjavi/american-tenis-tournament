@@ -1,14 +1,15 @@
 # American Padel Tournament - Genetic Algorithm
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-133%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-178%20passing-brightgreen.svg)](tests/)
 [![Code style: Clean](https://img.shields.io/badge/code%20style-clean-black.svg)](https://github.com/psf/black)
 
-An optimized calendar generator for American-style padel tournaments using genetic algorithms. The system creates balanced match schedules that minimize repetitions and maximize flexibility through strategic cut points.
+An optimized calendar generator for American-style padel tournaments using genetic algorithms. The system creates balanced match schedules that minimize repetitions and maximize flexibility through strategic cut points. Supports **multiple courts** for simultaneous matches.
 
 ## 🎯 Features
 
 - **Genetic Algorithm Optimization**: Evolves tournament calendars to maximize quality
+- **Multiple Courts Support**: Simultaneous matches on multiple courts with round-based scheduling
 - **Balance Optimization**: Ensures all players play similar number of matches
 - **Cut Points Detection**: Identifies optimal stopping points for flexible tournament lengths
 - **Repetition Minimization**: Reduces team and opponent repetitions
@@ -17,7 +18,7 @@ An optimized calendar generator for American-style padel tournaments using genet
 - **Hyperparameter Optimization**: Tools to find optimal GA parameters
 - **Parallel Processing**: Multi-core support for faster execution
 - **Early Stopping**: Automatic convergence detection
-- **Comprehensive Testing**: 133 tests covering all functionality
+- **Comprehensive Testing**: 178 tests covering all functionality
 
 ## 📋 Requirements
 
@@ -50,8 +51,10 @@ Edit `main.py` to customize parameters:
 
 ```python
 # Tournament parameters
-N_PLAYERS = 7           # Number of players
-N_MATCHES = 50          # Number of matches to generate
+N_PLAYERS = 8           # Number of players
+N_ROUNDS = 10           # Number of rounds to play
+N_COURTS = 2            # Number of courts (default: 1)
+# Total matches = N_ROUNDS × N_COURTS
 
 # Genetic Algorithm parameters
 POPULATION_SIZE = 100   # Size of the population
@@ -68,6 +71,25 @@ WEIGHT_TEAM_REP = 10.0      # Medium - minimize team repetitions
 WEIGHT_WAITING = 5.0        # Low-medium - minimize waiting rounds
 WEIGHT_EARLY_CUT = 50.0     # High - incentivize early cut points
 ```
+
+### Multiple Courts
+
+With multiple courts, matches are grouped into **rounds** where `N_COURTS` matches are played simultaneously:
+
+```
+📅 Round 1:
+  🎾 Court 1 - Match 1: (A,B) vs (C,D)
+  🎾 Court 2 - Match 2: (E,F) vs (G,H)
+
+📅 Round 2:
+  🎾 Court 1 - Match 3: (A,E) vs (B,F)
+  🎾 Court 2 - Match 4: (C,G) vs (D,H)
+```
+
+**Minimum players per court configuration:**
+- 1 court: 4 players minimum
+- 2 courts: 8 players minimum  
+- N courts: 4×N players minimum
 
 ### Hyperparameter Optimization
 
@@ -117,7 +139,8 @@ american-tenis-tournament/
 │   ├── test_genetic_algorithm.py   # Tests for GA
 │   ├── test_cut_points.py          # Tests for cut points detection
 │   ├── test_output.py              # Tests for output formatting
-│   └── test_main.py                # End-to-end tests
+│   ├── test_main.py                # End-to-end tests
+│   └── test_multiple_courts.py     # Tests for multiple courts functionality
 ├── docs_agent/
 │   ├── agent.md                    # Project overview and concepts
 │   ├── implementation.md           # Implementation details
@@ -246,12 +269,12 @@ This project follows Test-Driven Development (TDD):
 - **Type Hints**: Full type annotations throughout
 - **Pydantic Validation**: Automatic data validation
 - **Clean Code**: Well-documented and organized
-- **Testing**: 133 tests, 100% passing
+- **Testing**: 178 tests, 100% passing
 - **English Only**: All code, comments, and documentation in English
 
 ## 🎯 Project Status
 
-**Current Phase**: Phase 8 Complete - Hyperparameter Optimization ✅
+**Current Phase**: Phase 9 Complete - Multiple Courts Support ✅
 
 **All Phases Completed:**
 - ✅ Phase 1: Core Data Structures
@@ -263,8 +286,9 @@ This project follows Test-Driven Development (TDD):
 - ✅ Phase 7: Testing and Optimization
 - ✅ Phase 7.1: Enhanced Output and Distribution Optimization
 - ✅ Phase 8: Hyperparameter Optimization
+- ✅ Phase 9: Multiple Courts and Round-based Play
 
-**Status**: Production Ready with Optimization Tools ✅
+**Status**: Production Ready with Multiple Courts Support ✅
 
 ## 📄 License
 
@@ -284,5 +308,5 @@ AI System for sports calendar generation
 
 ---
 
-**Version**: 1.2  
-**Last Updated**: 2025-11-29
+**Version**: 2.0  
+**Last Updated**: 2025-12-31

@@ -222,7 +222,7 @@ class TestPrintCutPoints:
         # Generate a calendar that should have cut points
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=20,
             generations=10
         )
@@ -357,7 +357,7 @@ class TestOutputIntegration:
         
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=20,
             generations=10
         )
@@ -480,7 +480,7 @@ class TestCSVExport:
         # Generate a calendar with cut points
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=20,
             generations=10
         )
@@ -600,7 +600,7 @@ class TestTXTExport:
         # Generate a calendar with cut points
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=20,
             generations=10
         )
@@ -691,7 +691,7 @@ class TestUnifiedExport:
         # Generate a calendar
         ga = GeneticAlgorithm(
             n_players=5,
-            n_matches=10,
+            n_rounds=10,
             population_size=20,
             generations=10
         )

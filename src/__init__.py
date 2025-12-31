@@ -2,9 +2,15 @@
 American Padel Tournament - Genetic Algorithm Package
 """
 
-from .dataclasses import Match, Calendar
+from .dataclasses import (
+    Match,
+    Calendar,
+    get_minimum_players_for_courts,
+    can_use_multiple_courts,
+)
 from .utils import generate_random_match, is_valid_match
 from .genetic_algorithm import (
+    calculate_round_conflict_penalty,
     calculate_balance_penalty,
     calculate_opponent_repetition_penalty,
     calculate_team_repetition_penalty,
@@ -35,8 +41,11 @@ from .hyperparameter_optimizer import (
 __all__ = [
     'Match',
     'Calendar',
+    'get_minimum_players_for_courts',
+    'can_use_multiple_courts',
     'generate_random_match',
     'is_valid_match',
+    'calculate_round_conflict_penalty',
     'calculate_balance_penalty',
     'calculate_opponent_repetition_penalty',
     'calculate_team_repetition_penalty',

@@ -283,7 +283,7 @@ class TestCutPointsIntegration:
         # Run small GA
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=5
         )

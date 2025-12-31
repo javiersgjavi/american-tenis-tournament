@@ -5,8 +5,53 @@ Contains Match and Calendar Pydantic models.
 
 import numpy as np
 from pydantic import BaseModel, field_validator, ConfigDict
+from typing import Optional
 
 from .utils import is_valid_match
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def get_minimum_players_for_courts(n_courts: int) -> int:
+    """
+    Calculate the minimum number of players needed for n_courts.
+    
+    With n_courts, we need at least enough players to have different
+    players in each simultaneous match. Minimum is 4 players per court,
+    but they can share across courts.
+    
+    Args:
+        n_courts: Number of courts available
+        
+    Returns:
+        Minimum number of players needed
+    """
+    # With 1 court: 4 players minimum
+    # With 2 courts: 8 players minimum (all 8 can play simultaneously)
+    # With n courts: 4*n players minimum for full utilization
+    return 4 * n_courts
+
+
+def can_use_multiple_courts(n_players: int, n_courts: int) -> bool:
+    """
+    Check if the number of players is appropriate for using multiple courts.
+    
+    Args:
+        n_players: Number of players in the tournament
+        n_courts: Number of courts to use
+        
+    Returns:
+        True if configuration is valid, False otherwise
+    """
+    if n_courts < 1:
+        return False
+    if n_courts == 1:
+        return n_players >= 4
+    # For multiple courts, we need at least 4*n_courts players
+    # to have all courts playing with different players
+    return n_players >= get_minimum_players_for_courts(n_courts)
 
 
 # ============================================================================
@@ -105,11 +150,15 @@ class Calendar(BaseModel):
     """
     Represents a complete tournament calendar.
     Uses Pydantic for automatic validation.
+    
+    With n_courts > 1, matches are grouped into rounds where multiple matches
+    can be played simultaneously. Each round contains up to n_courts matches.
     """
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     matches: np.ndarray  # Shape: (n_matches, 2 * n_players)
     n_players: int
+    n_courts: int = 1  # Number of courts available (default: 1 = sequential play)
     
     @field_validator('matches')
     @classmethod
@@ -128,6 +177,52 @@ class Calendar(BaseModel):
     def __len__(self) -> int:
         """Return number of matches in calendar."""
         return len(self.matches)
+    
+    def get_total_rounds(self) -> int:
+        """
+        Get the total number of rounds in the calendar.
+        
+        With n_courts courts, each round contains up to n_courts matches.
+        
+        Returns:
+            Total number of rounds
+        """
+        if len(self.matches) == 0:
+            return 0
+        # Ceiling division to get number of rounds
+        return (len(self.matches) + self.n_courts - 1) // self.n_courts
+    
+    def get_round_for_match(self, match_index: int) -> int:
+        """
+        Get the round number for a specific match.
+        
+        Args:
+            match_index: Match index (0-based)
+            
+        Returns:
+            Round number (1-based)
+        """
+        if match_index < 0 or match_index >= len(self.matches):
+            raise IndexError(f"Match index {match_index} out of range")
+        return (match_index // self.n_courts) + 1
+    
+    def get_matches_in_round(self, round_num: int) -> list[int]:
+        """
+        Get the match indices that belong to a specific round.
+        
+        Args:
+            round_num: Round number (1-based)
+            
+        Returns:
+            List of match indices in that round
+        """
+        if round_num < 1:
+            raise ValueError(f"Round number must be >= 1, got {round_num}")
+        
+        start_idx = (round_num - 1) * self.n_courts
+        end_idx = min(start_idx + self.n_courts, len(self.matches))
+        
+        return list(range(start_idx, end_idx))
     
     def get_match(self, index: int) -> Match:
         """
@@ -157,6 +252,64 @@ class Calendar(BaseModel):
                 return False
         return True
     
+    def has_round_conflicts(self) -> bool:
+        """
+        Check if any player appears in multiple matches within the same round.
+        
+        A round conflict occurs when a player is scheduled to play in two
+        different matches that happen simultaneously on different courts.
+        
+        Returns:
+            True if there are conflicts, False otherwise
+        """
+        if self.n_courts <= 1:
+            return False  # No conflicts possible with single court
+        
+        for round_num in range(1, self.get_total_rounds() + 1):
+            match_indices = self.get_matches_in_round(round_num)
+            players_in_round = set()
+            
+            for match_idx in match_indices:
+                match = self.get_match(match_idx)
+                players = match.get_players()
+                
+                for player in players:
+                    if player in players_in_round:
+                        return True  # Conflict found
+                    players_in_round.add(player)
+        
+        return False
+    
+    def get_round_conflicts(self) -> list[tuple[int, int, int]]:
+        """
+        Get detailed information about round conflicts.
+        
+        Returns:
+            List of tuples (round_num, player_idx, match_count) for each conflict
+        """
+        conflicts = []
+        
+        if self.n_courts <= 1:
+            return conflicts  # No conflicts possible with single court
+        
+        for round_num in range(1, self.get_total_rounds() + 1):
+            match_indices = self.get_matches_in_round(round_num)
+            player_match_count = {}
+            
+            for match_idx in match_indices:
+                match = self.get_match(match_idx)
+                players = match.get_players()
+                
+                for player in players:
+                    player_match_count[player] = player_match_count.get(player, 0) + 1
+            
+            # Find players with multiple matches in this round
+            for player, count in player_match_count.items():
+                if count > 1:
+                    conflicts.append((round_num, player, count))
+        
+        return conflicts
+    
     def get_matches_per_player(self) -> dict[int, int]:
         """
         Count how many matches each player plays.
@@ -178,10 +331,44 @@ class Calendar(BaseModel):
         """
         Calculate waiting rounds (gaps) between matches for each player.
         
+        With n_courts > 1, this calculates gaps in terms of rounds, not matches.
+        A player is considered to play in a round if they have at least one
+        match in that round.
+        
+        Returns:
+            Dictionary mapping player_index -> list of gaps between consecutive rounds played
+        """
+        waiting_rounds = {i: [] for i in range(self.n_players)}
+        
+        for player in range(self.n_players):
+            # Find all rounds where this player plays
+            rounds_played = set()
+            for i, match_vector in enumerate(self.matches):
+                match = Match(match_vector=match_vector, n_players=self.n_players)
+                if player in match.get_players():
+                    round_num = self.get_round_for_match(i)
+                    rounds_played.add(round_num)
+            
+            # Sort rounds and calculate gaps
+            sorted_rounds = sorted(rounds_played)
+            for i in range(len(sorted_rounds) - 1):
+                # Gap is the number of rounds between consecutive plays
+                gap = sorted_rounds[i + 1] - sorted_rounds[i] - 1
+                waiting_rounds[player].append(gap)
+        
+        return waiting_rounds
+    
+    def get_waiting_matches_per_player(self) -> dict[int, list[int]]:
+        """
+        Calculate waiting in terms of individual matches (legacy behavior).
+        
+        This is the original waiting calculation based on match indices,
+        not rounds. Useful for comparison when n_courts > 1.
+        
         Returns:
             Dictionary mapping player_index -> list of gaps between consecutive matches
         """
-        waiting_rounds = {i: [] for i in range(self.n_players)}
+        waiting_matches = {i: [] for i in range(self.n_players)}
         
         for player in range(self.n_players):
             # Find all match indices where this player plays
@@ -194,7 +381,7 @@ class Calendar(BaseModel):
             # Calculate gaps between consecutive matches
             for i in range(len(match_indices) - 1):
                 gap = match_indices[i + 1] - match_indices[i] - 1
-                waiting_rounds[player].append(gap)
+                waiting_matches[player].append(gap)
         
-        return waiting_rounds
+        return waiting_matches
 

@@ -16,7 +16,7 @@ class TestGeneticAlgorithmInitialization:
         """Test creating a GeneticAlgorithm instance."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=20,
+            n_rounds=20,
             population_size=10,
             generations=5,
             mutation_rate=0.1,
@@ -25,7 +25,8 @@ class TestGeneticAlgorithmInitialization:
         )
         assert ga is not None
         assert ga.n_players == 7
-        assert ga.n_matches == 20
+        assert ga.n_rounds == 20
+        assert ga.n_matches == 20  # With n_courts=1, n_matches = n_rounds
         assert ga.population_size == 10
         assert ga.generations == 5
         assert ga.mutation_rate == 0.1
@@ -36,7 +37,7 @@ class TestGeneticAlgorithmInitialization:
         """Test that default fitness weights are set."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=20,
+            n_rounds=20,
             population_size=10,
             generations=5
         )
@@ -50,7 +51,7 @@ class TestGeneticAlgorithmInitialization:
         """Test that custom fitness weights can be set."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=20,
+            n_rounds=20,
             population_size=10,
             generations=5,
             weight_balance=200.0,
@@ -73,7 +74,7 @@ class TestInitializePopulation:
         """Test that population has correct size."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1
         )
@@ -84,7 +85,7 @@ class TestInitializePopulation:
         """Test that all calendars in population are valid."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1
         )
@@ -103,7 +104,7 @@ class TestTournamentSelection:
         """Test that tournament selection returns a Calendar."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1
         )
@@ -117,7 +118,7 @@ class TestTournamentSelection:
         """Test that tournament selection tends to select better individuals."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=1
         )
@@ -141,7 +142,7 @@ class TestCrossover:
         """Test that crossover returns two offspring calendars."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1
         )
@@ -159,7 +160,7 @@ class TestCrossover:
         """Test that crossover produces valid calendars."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1
         )
@@ -175,7 +176,7 @@ class TestCrossover:
         """Test that crossover respects crossover_rate."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1,
             crossover_rate=0.0  # Never crossover
@@ -198,7 +199,7 @@ class TestMutation:
         """Test that mutate returns a Calendar."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1,
             mutation_rate=1.0  # Always mutate
@@ -214,7 +215,7 @@ class TestMutation:
         """Test that mutation produces valid calendar."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1,
             mutation_rate=1.0  # Always mutate
@@ -229,7 +230,7 @@ class TestMutation:
         """Test that mutation respects mutation_rate."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1,
             mutation_rate=0.0  # Never mutate
@@ -249,7 +250,7 @@ class TestCalculateFitnessForCalendar:
         """Test that fitness calculation returns a float."""
         ga = GeneticAlgorithm(
             n_players=7,
-            n_matches=10,
+            n_rounds=10,
             population_size=5,
             generations=1
         )
@@ -264,14 +265,14 @@ class TestCalculateFitnessForCalendar:
         """Test that fitness calculation uses configured weights."""
         ga1 = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=5,
             generations=1,
             weight_balance=100.0
         )
         ga2 = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=5,
             generations=1,
             weight_balance=200.0  # Different weight
@@ -297,7 +298,7 @@ class TestGeneticAlgorithmRun:
         """Test that run returns the best calendar found."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=5
         )
@@ -312,7 +313,7 @@ class TestGeneticAlgorithmRun:
         """Test that GA can solve a small problem."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=3,
+            n_rounds=3,
             population_size=20,
             generations=10
         )
@@ -328,7 +329,7 @@ class TestGeneticAlgorithmRun:
         """Test that fitness improves over generations."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=20,
             generations=20
         )
@@ -345,7 +346,7 @@ class TestGeneticAlgorithmRun:
         """Test that elitism preserves best individuals."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=5,
             elitism_size=2
@@ -361,7 +362,7 @@ class TestGeneticAlgorithmRun:
         """Test that run works with verbose=False."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=5
         )
@@ -374,7 +375,7 @@ class TestGeneticAlgorithmRun:
         """Test that run works with verbose=True."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=5
         )
@@ -391,7 +392,7 @@ class TestGeneticAlgorithmEdgeCases:
         """Test with very small population."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=3,
+            n_rounds=3,
             population_size=2,
             generations=2
         )
@@ -403,7 +404,7 @@ class TestGeneticAlgorithmEdgeCases:
         """Test with single generation."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=3,
+            n_rounds=3,
             population_size=5,
             generations=1
         )
@@ -415,7 +416,7 @@ class TestGeneticAlgorithmEdgeCases:
         """Test with elitism_size close to population_size."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=3,
+            n_rounds=3,
             population_size=10,
             generations=2,
             elitism_size=8
@@ -432,7 +433,7 @@ class TestEarlyStopping:
         """Test that early_stopping_patience parameter can be set."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=100,
             early_stopping_patience=10
@@ -444,7 +445,7 @@ class TestEarlyStopping:
         """Test that early stopping is disabled by default (None)."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=100
         )
@@ -455,7 +456,7 @@ class TestEarlyStopping:
         """Test that early stopping stops before reaching max generations."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=20,
             generations=100,
             early_stopping_patience=5
@@ -471,7 +472,7 @@ class TestEarlyStopping:
         """Test with patience=0 (should stop after first generation without improvement)."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=100,
             early_stopping_patience=0
@@ -487,7 +488,7 @@ class TestEarlyStopping:
         """Test that without early stopping, all generations run."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=20,
             early_stopping_patience=None  # Disabled
@@ -506,7 +507,7 @@ class TestEarlyStopping:
         
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=20,
             generations=100,
             early_stopping_patience=5

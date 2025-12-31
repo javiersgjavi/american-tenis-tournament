@@ -928,7 +928,164 @@ Exporting results to files...
 
 ---
 
-**Last Updated:** 2025-11-29  
-**Current Phase:** Phase 8.1 Complete - Enhanced Optimization and Export  
-**Status:** ✅ Production Ready with Optimization Tools and File Export
+### 9. Multiple Courts Support (n_courts) ✅
+
+**Objective:** Add support for multiple courts playing simultaneously, introducing the concept of rounds.
+
+**Status:** Completed
+
+**Completed:** 2025-12-31
+
+**What was done:**
+- Added `n_courts` parameter to Calendar class (default: 1)
+- Implemented round-based grouping of matches
+- Added round conflict detection (player in multiple matches same round)
+- Modified waiting penalty to work with rounds instead of individual matches
+- Modified cut point detection to only evaluate at round boundaries
+- Updated genetic operators to work with rounds (crossover at round boundaries, mutation per round)
+- Updated all output functions to display round information
+- Updated CSV export to include Round and Court columns
+- Added helper functions: `get_minimum_players_for_courts()`, `can_use_multiple_courts()`
+
+**Files created/modified:**
+- `src/dataclasses.py` - Added n_courts, round methods, conflict detection (~100 new lines)
+- `src/genetic_algorithm.py` - Added round conflict penalty, modified fitness functions, updated GA class (~150 modified/new lines)
+- `src/printer.py` - Updated all print functions for round display, modified CSV export (~80 modified lines)
+- `main.py` - Added N_COURTS parameter
+- `docs_agent/agent.md` - Added multiple courts documentation
+- `docs_agent/implementation.md` - Updated with new features
+- `docs_agent/changelog.md` - This entry
+
+**Algorithm changes:**
+
+**1. New Hard Constraint - Round Conflicts:**
+```python
+def calculate_round_conflict_penalty(calendar: Calendar) -> float:
+    """
+    Returns float('inf') if any player appears in multiple matches
+    within the same round. This makes the calendar INVALID.
+    """
+    if calendar.has_round_conflicts():
+        return float('inf')
+    return 0.0
+```
+
+**2. Modified Waiting Penalty:**
+- Now calculates waiting in terms of ROUNDS, not individual matches
+- With n_courts=2: If player plays round 1 and round 3, waited 1 round (not 2 matches)
+
+**3. Modified Cut Points:**
+- Only evaluated at round boundaries
+- Returns round numbers instead of match indices
+- Example: With 2 courts, cut at "round 5" = after match 10
+
+**4. Modified Genetic Operators:**
+- Crossover: Happens at round boundaries
+- Mutation: Operates on entire rounds (replace round, swap rounds, regenerate round)
+- Initialization: Generates rounds without conflicts
+
+**5. Simplified Configuration with n_rounds:**
+- `n_rounds` is now the primary parameter (not `n_matches`)
+- Total matches = `n_rounds × n_courts`
+- Example: 10 rounds with 2 courts = 20 matches
+- Example: 10 rounds with 1 court = 10 matches (backward compatible)
+
+**Key Features:**
+
+**Round Concept:**
+| n_courts | Matches per round | Example (20 matches) |
+|----------|------------------|---------------------|
+| 1        | 1                | 20 rounds           |
+| 2        | 2                | 10 rounds           |
+| 3        | 3                | 7 rounds (6+1 incomplete) |
+
+**Minimum Players:**
+- n_courts=1: 4 players minimum
+- n_courts=2: 8 players minimum
+- n_courts=N: 4*N players minimum
+
+**Output Format with Multiple Courts:**
+```
+📅 Round 1:
+  🎾 Court 1 - Match 1: (A,B) vs (C,D)
+  🎾 Court 2 - Match 2: (E,F) vs (G,H)
+
+📅 Round 2:
+  🎾 Court 1 - Match 3: (A,E) vs (B,F)
+  🎾 Court 2 - Match 4: (C,G) vs (D,H)
+```
+
+**CSV Export with Rounds:**
+```csv
+Round,Court,Match #,Team 1,Team 2,Perfect Cut,Acceptable Cut
+1,1,1,A,B,C,D,,
+1,2,2,E,F,G,H,✓,✓
+```
+
+**Issues encountered:**
+- None - implementation followed the design smoothly
+
+**Testing:**
+- Manual testing confirms correct round grouping
+- Conflict detection working correctly
+- Cut points only appear at round boundaries
+- CSV export includes Round and Court columns
+
+**Notes:**
+- All code, comments, and documentation in English
+- Backward compatible: n_courts=1 behaves exactly like before
+- Multiple courts significantly reduces total tournament time
+- With 8 players and 2 courts, all 8 can play every round
+
+---
+
+### 9.1 Test Suite for Multiple Courts ✅
+
+**Objective:** Add comprehensive tests for the new multiple courts functionality.
+
+**Status:** Completed
+
+**Completed:** 2025-12-31
+
+**What was done:**
+- Created `tests/test_multiple_courts.py` with 32 new tests
+- Updated existing tests to use `n_rounds` instead of `n_matches`
+- All tests passing (178 total tests)
+
+**Test Categories (32 tests):**
+1. `TestMultipleCourtsHelpers` (6 tests) - Helper functions for court validation
+2. `TestCalendarWithCourts` (8 tests) - Calendar round management methods
+3. `TestRoundConflicts` (4 tests) - Round conflict detection
+4. `TestRoundConflictPenalty` (2 tests) - Penalty function for conflicts
+5. `TestWaitingPenaltyWithRounds` (1 test) - Waiting penalty with rounds
+6. `TestCutPointsWithRounds` (1 test) - Cut points at round boundaries
+7. `TestGeneticAlgorithmWithRounds` (4 tests) - GA with n_rounds parameter
+8. `TestValidateSolutionWithRounds` (2 tests) - Solution validation
+9. `TestFitnessWithRounds` (2 tests) - Fitness calculation
+10. `TestIntegrationMultipleCourts` (2 tests) - Full integration tests
+
+**Files Modified:**
+- `tests/test_multiple_courts.py` (new file)
+- `tests/test_genetic_algorithm.py` (n_matches → n_rounds)
+- `tests/test_main.py` (N_MATCHES → N_ROUNDS)
+- `tests/test_output.py` (n_matches → n_rounds)
+- `tests/test_cut_points.py` (n_matches → n_rounds)
+
+**Documentation Updated:**
+- `README.md` - Updated test count, features, configuration examples
+- `docs_agent/tests_info.md` - Added detailed test documentation
+- `docs_agent/changelog.md` - This entry
+
+**Issues encountered:**
+- Initial test vectors for 8 players had incorrect format, fixed by understanding match vector structure
+
+**Notes:**
+- Tests use `model_construct()` to bypass Pydantic validation when testing conflict scenarios
+- Fast tests as requested - full suite runs in ~2 seconds
+
+---
+
+**Last Updated:** 2025-12-31  
+**Current Phase:** Phase 9.1 Complete - Multiple Courts Tests  
+**Status:** ✅ Production Ready with Comprehensive Test Coverage (178 tests)
 

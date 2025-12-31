@@ -13,6 +13,27 @@ Generate a match calendar that:
 - Minimizes waiting rounds for players
 - Identifies optimal cut points to finish the tournament
 
+## 🎾 Multiple Courts Support
+
+### Court Configuration
+The tournament can be configured to use multiple courts simultaneously:
+- `n_courts = 1`: Sequential play (one match at a time) - default behavior
+- `n_courts = 2`: Two matches played simultaneously per round
+- `n_courts = N`: N matches played simultaneously per round
+
+### Round Concept
+With multiple courts, matches are grouped into **rounds**:
+- Each round contains up to `n_courts` matches played simultaneously
+- Example with 8 players and 2 courts:
+  - Round 1: Court 1: (A,B) vs (C,D), Court 2: (E,F) vs (G,H)
+  - All 8 players play in round 1
+
+### Constraints
+- **Minimum players**: `n_courts * 4` players required
+- **No round conflicts**: A player cannot appear in multiple matches of the same round
+- **Match count**: Automatically adjusted to be a multiple of `n_courts`
+- **Cut points**: Only evaluated at round boundaries
+
 ## 🧬 Chromosome Representation
 
 ### Match Structure
@@ -25,7 +46,7 @@ A chromosome represents a complete calendar (list of matches).
 
 **Proposed encoding:**
 - Matrix of size `(N, match_representation)`
-  - `N` = total number of matches to play
+  - `N` = total number of matches to play (multiple of n_courts)
   - `match_representation` = one-hot encoding vector representing players in a match
 
 **Example with 4 players (A,B,C,D):**
@@ -54,13 +75,20 @@ A chromosome represents a complete calendar (list of matches).
 
 ## 📊 Fitness Function (Heuristics)
 
-The fitness evaluates the quality of a calendar based on 6 main criteria (5 penalties + 1 bonus):
+The fitness evaluates the quality of a calendar based on 7 main criteria (6 penalties + 1 bonus):
 
 ### 0. **Valid Match Constraint** (Hard Constraint)
 - **Objective:** Every match must have exactly 4 different players
 - **Validation:** Each match vector must have exactly 4 ones (2 in each team)
 - **Penalty:** INFINITE penalty if a match has repeated players or invalid structure
 - **Note:** This is a hard constraint that must always be satisfied
+
+### 0.1. **Round Conflict Constraint** (Hard Constraint - Multiple Courts)
+- **Objective:** A player cannot appear in multiple matches within the same round
+- **Validation:** For each round, check that no player appears more than once
+- **Penalty:** INFINITE penalty if any round has player conflicts
+- **Note:** Only applies when `n_courts > 1`. Ensures simultaneous play is physically possible.
+- **Example:** With 2 courts, if player A is in both matches of round 1, the calendar is INVALID
 
 ### 1. **Balance of Matches per Player** (HIGH PRIORITY)
 - **Objective:** All players should play a similar number of matches
@@ -82,12 +110,13 @@ The fitness evaluates the quality of a calendar based on 6 main criteria (5 pena
 - **Formula:** `penalty = sum((repetitions - 1)^2 for each team pair)`
 
 ### 4. **Player Waiting Rounds**
-- **Objective:** Minimize the number of consecutive matches a player waits without playing
-- **Penalty:** Penalize long waiting periods between matches for each player
+- **Objective:** Minimize the number of consecutive rounds a player waits without playing
+- **Penalty:** Penalize long waiting periods between rounds for each player
 - **Metric:** Sum of waiting rounds for all players
-- **Note:** Matches are played sequentially (one at a time)
+- **Note:** With multiple courts, waiting is measured in ROUNDS, not individual matches
 - **Formula:** `penalty = sum(waiting_rounds^2 for each player)`
-- **Example:** If player A plays match 1, then waits matches 2,3,4, then plays match 5, they waited 3 rounds
+- **Example (n_courts=1):** If player A plays match 1, then waits matches 2,3,4, then plays match 5, they waited 3 rounds
+- **Example (n_courts=2):** If player A plays in round 1, skips round 2, plays round 3, they waited 1 round
 
 ### 5. **Early Cut Points Bonus** (IMPORTANT)
 - **Objective:** Incentivize calendars that have cut points as early as possible
@@ -119,34 +148,43 @@ fitness = -(
 ## 🔍 Cut Points
 
 ### Definition
-A cut point is an index in the calendar where the tournament can be finished while maintaining balance.
+A cut point is a position in the calendar where the tournament can be finished while maintaining balance.
 
-**IMPORTANT:** The earlier a cut point appears, the better. A tournament that can be stopped after 10 matches is more flexible than one requiring 30 matches.
+**IMPORTANT:** The earlier a cut point appears, the better. A tournament that can be stopped after fewer rounds is more flexible.
+
+### Multiple Courts Consideration
+With multiple courts (`n_courts > 1`), cut points are ONLY evaluated at **round boundaries**:
+- It doesn't make sense to stop mid-round where some courts have played and others haven't
+- Cut point positions are expressed as ROUND NUMBERS, not match indices
+- Example: With 2 courts, a cut at "round 5" means after match 10
 
 ### Types of Cuts
 
 **Perfect Cut:**
 - Maximum difference in matches between players = 0
 - All players have played exactly the same number of matches
-- **Example:** After match 8, all players have played 4 matches
-- **Ideal:** First perfect cut should appear in the first 30% of the calendar
+- **Example (n_courts=2):** After round 4 (8 matches), all 8 players have played 4 matches each
+- **Ideal:** First perfect cut should appear in the first 30% of rounds
 
 **Acceptable Cut:**
 - Maximum difference in matches between players ≤ 1
 - Almost all players have played the same number of matches
-- **Example:** After match 12, some played 5 and others 6
-- **Minimum requirement:** At least one cut point should exist before 60% of the calendar
+- **Example:** After round 6, some played 5 and others 6
+- **Minimum requirement:** At least one cut point should exist before 60% of rounds
 
 ### Detection
-After generating the calendar, iterate through each index and calculate:
+After generating the calendar, iterate through each round boundary and calculate:
 ```python
-matches_per_player = count_matches_until(index)
-max_difference = max(matches_per_player) - min(matches_per_player)
-
-if max_difference == 0:
-    perfect_cuts.append(index)
-elif max_difference <= 1:
-    acceptable_cuts.append(index)
+# Only check at round boundaries
+for round_num in range(1, total_rounds + 1):
+    cut_index = round_num * n_courts  # Last match of the round
+    matches_per_player = count_matches_until(cut_index)
+    max_difference = max(matches_per_player) - min(matches_per_player)
+    
+    if max_difference == 0:
+        perfect_cuts.append(round_num)
+    elif max_difference <= 1:
+        acceptable_cuts.append(round_num)
 ```
 
 ### Quality Criteria
@@ -159,14 +197,22 @@ elif max_difference <= 1:
 
 ### Configurable Parameters
 ```python
-N_PLAYERS = 7            # Number of players
-N_MATCHES = 50           # Matches to generate
+N_PLAYERS = 8            # Number of players
+N_ROUNDS = 10            # Number of rounds to play
+N_COURTS = 2             # Number of courts (1 = sequential, 2+ = simultaneous rounds)
+                         # Total matches = N_ROUNDS × N_COURTS
 POPULATION_SIZE = 100    # Population size
 GENERATIONS = 200        # Number of generations
 MUTATION_RATE = 0.1      # Mutation probability
 CROSSOVER_RATE = 0.8     # Crossover probability
 ELITISM_SIZE = 2         # Number of best individuals to keep
 ```
+
+### Multiple Courts Requirements
+- Minimum players: `N_COURTS * 4`
+- Total matches = `N_ROUNDS × N_COURTS`
+- Example: 10 rounds with 2 courts = 20 matches total
+- Example: 8 players with 2 courts = all 8 can play simultaneously each round
 
 ### Genetic Operators
 
@@ -215,7 +261,7 @@ Possible operations:
 
 ## 📤 Program Output
 
-### Output Format
+### Output Format (Single Court)
 ```
 === AMERICAN TOURNAMENT CALENDAR ===
 Players: A, B, C, D, E, F, G
@@ -223,23 +269,40 @@ Total matches: 50
 
 Match 1: (A,D) vs (B,C)
 Match 2: (A,E) vs (D,F)
-Match 3: (B,G) vs (C,E)
 ...
-Match 50: (A,F) vs (C,G)
-
-=== STATISTICS ===
-Matches per player:
-  A: 28 matches
-  B: 29 matches
-  C: 28 matches
-  D: 29 matches
-  E: 28 matches
-  F: 28 matches
-  G: 30 matches
 
 === CUT POINTS ===
 Perfect cuts: [7, 14, 21, 35]
 Acceptable cuts: [10, 18, 25, 32, 40, 48]
+```
+
+### Output Format (Multiple Courts)
+```
+=== AMERICAN TOURNAMENT CALENDAR ===
+Players: A, B, C, D, E, F, G, H
+Courts: 2 | Total Rounds: 10 | Total Matches: 20
+
+📅 Round 1:
+  🎾 Court 1 - Match 1: (A,B) vs (C,D)
+  🎾 Court 2 - Match 2: (E,F) vs (G,H)
+
+📅 Round 2:
+  🎾 Court 1 - Match 3: (A,E) vs (B,F)
+  🎾 Court 2 - Match 4: (C,G) vs (D,H)
+...
+
+=== CUT POINTS ===
+Perfect cuts (rounds): [1, 2, 5, 10]  -- Round boundaries only
+Acceptable cuts (rounds): [3, 4, 6, 7, 8, 9]
+```
+
+### CSV Export Format (Multiple Courts)
+```csv
+Round,Court,Match #,Team 1,Team 2,Perfect Cut,Acceptable Cut
+1,1,1,A,B,C,D,,
+1,2,2,E,F,G,H,✓,✓
+2,1,3,A,E,B,F,,
+2,2,4,C,G,D,H,✓,✓
 ```
 
 ## 🏗️ Project Structure

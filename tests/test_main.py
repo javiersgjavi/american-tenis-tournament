@@ -19,14 +19,14 @@ class TestEndToEnd:
         """
         # Small configuration for fast testing
         N_PLAYERS = 4
-        N_MATCHES = 10
+        N_ROUNDS = 10
         POPULATION_SIZE = 20
         GENERATIONS = 50
         
         # Initialize GA
         ga = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS,
             mutation_rate=0.1,
@@ -45,7 +45,7 @@ class TestEndToEnd:
         # Verify we got a calendar
         assert best_calendar is not None
         assert isinstance(best_calendar, Calendar)
-        assert len(best_calendar) == N_MATCHES
+        assert len(best_calendar) == N_ROUNDS
         assert best_calendar.n_players == N_PLAYERS
         
         # Verify all matches are valid
@@ -64,14 +64,14 @@ class TestEndToEnd:
         This is closer to a real-world scenario.
         """
         N_PLAYERS = 7
-        N_MATCHES = 30
+        N_ROUNDS = 30
         POPULATION_SIZE = 50
         GENERATIONS = 100
         
         # Initialize GA
         ga = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS,
             mutation_rate=0.1,
@@ -89,7 +89,7 @@ class TestEndToEnd:
         
         # Verify calendar properties
         assert best_calendar is not None
-        assert len(best_calendar) == N_MATCHES
+        assert len(best_calendar) == N_ROUNDS
         assert best_calendar.n_players == N_PLAYERS
         assert best_calendar.is_valid()
         
@@ -106,13 +106,13 @@ class TestEndToEnd:
         Test that the genetic algorithm actually improves fitness over time.
         """
         N_PLAYERS = 5
-        N_MATCHES = 15
+        N_ROUNDS = 15
         POPULATION_SIZE = 30
         GENERATIONS = 50
         
         ga = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS,
             mutation_rate=0.1,
@@ -140,13 +140,13 @@ class TestEndToEnd:
         This is a key requirement for tournament flexibility.
         """
         N_PLAYERS = 6
-        N_MATCHES = 20
+        N_ROUNDS = 20
         POPULATION_SIZE = 40
         GENERATIONS = 80
         
         ga = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS,
             weight_balance=100.0,  # High weight on balance
@@ -170,13 +170,13 @@ class TestEndToEnd:
         Test that the algorithm optimizes for balance in matches per player.
         """
         N_PLAYERS = 5
-        N_MATCHES = 20
+        N_ROUNDS = 20
         POPULATION_SIZE = 30
         GENERATIONS = 60
         
         ga = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS,
             weight_balance=200.0,  # Very high weight on balance
@@ -204,13 +204,13 @@ class TestEndToEnd:
         Test that all generated matches are valid (4 different players).
         """
         N_PLAYERS = 7
-        N_MATCHES = 25
+        N_ROUNDS = 25
         POPULATION_SIZE = 40
         GENERATIONS = 60
         
         ga = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS
         )
@@ -234,7 +234,7 @@ class TestEndToEnd:
         import numpy as np
         
         N_PLAYERS = 5
-        N_MATCHES = 15
+        N_ROUNDS = 15
         POPULATION_SIZE = 20
         GENERATIONS = 30
         
@@ -244,7 +244,7 @@ class TestEndToEnd:
         
         ga1 = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS
         )
@@ -256,7 +256,7 @@ class TestEndToEnd:
         
         ga2 = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS
         )
@@ -275,7 +275,7 @@ class TestEndToEnd:
         for n_players in player_counts:
             ga = GeneticAlgorithm(
                 n_players=n_players,
-                n_matches=15,
+                n_rounds=15,
                 population_size=20,
                 generations=30
             )
@@ -296,7 +296,7 @@ class TestMainScriptComponents:
         # Create a simple valid calendar
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=8,
+            n_rounds=8,
             population_size=10,
             generations=20
         )
@@ -322,7 +322,7 @@ class TestMainScriptComponents:
         """Test that fitness history is properly tracked."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=10,
+            n_rounds=10,
             population_size=15,
             generations=25
         )
@@ -351,7 +351,7 @@ class TestParallelization:
         # Run with parallelization
         ga_parallel = GeneticAlgorithm(
             n_players=5,
-            n_matches=15,
+            n_rounds=15,
             population_size=20,
             generations=20,
             n_jobs=2  # Use 2 parallel jobs
@@ -369,7 +369,7 @@ class TestParallelization:
         import numpy as np
         
         N_PLAYERS = 4
-        N_MATCHES = 10
+        N_ROUNDS = 10
         POPULATION_SIZE = 15
         GENERATIONS = 15
         
@@ -379,7 +379,7 @@ class TestParallelization:
         
         ga_seq = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS,
             n_jobs=1  # Sequential
@@ -392,7 +392,7 @@ class TestParallelization:
         
         ga_par = GeneticAlgorithm(
             n_players=N_PLAYERS,
-            n_matches=N_MATCHES,
+            n_rounds=N_ROUNDS,
             population_size=POPULATION_SIZE,
             generations=GENERATIONS,
             n_jobs=2  # Parallel
@@ -411,7 +411,7 @@ class TestEdgeCases:
         """Test with minimum number of matches."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=1,  # Just one match
+            n_rounds=1,  # Just one match
             population_size=10,
             generations=10
         )
@@ -425,7 +425,7 @@ class TestEdgeCases:
         """Test with a large number of matches."""
         ga = GeneticAlgorithm(
             n_players=6,
-            n_matches=100,  # Many matches
+            n_rounds=100,  # Many matches
             population_size=30,
             generations=50
         )
@@ -439,7 +439,7 @@ class TestEdgeCases:
         """Test with minimum number of players (4 - exactly one match possible)."""
         ga = GeneticAlgorithm(
             n_players=4,
-            n_matches=5,
+            n_rounds=5,
             population_size=10,
             generations=20
         )
