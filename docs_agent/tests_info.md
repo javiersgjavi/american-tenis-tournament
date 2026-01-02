@@ -1190,7 +1190,145 @@ Integration tests for multiple courts functionality.
 
 ---
 
-**Last Updated:** 2025-12-31  
-**Phase:** 9 - Multiple Courts and Round-based Play  
-**Test Count:** 178 tests, all passing ✅
+## Phase 10: Streamlit Web App Tests
+
+File: `tests/test_streamlit_app.py`
+
+### Class: `TestGetPlayerName` (8 tests)
+
+Tests for the `get_player_name()` helper function that converts player indices to names.
+
+#### ✅ `test_first_player_is_a`
+- **Purpose:** Verify player index 0 returns 'A'
+- **Expected:** get_player_name(0) == "A"
+
+#### ✅ `test_second_player_is_b`
+- **Purpose:** Verify player index 1 returns 'B'
+- **Expected:** get_player_name(1) == "B"
+
+#### ✅ `test_player_indices_0_to_7`
+- **Purpose:** Verify indices 0-7 return A-H
+- **Expected:** Correct letter for each index
+
+#### ✅ `test_player_index_25_is_z`
+- **Purpose:** Verify player index 25 returns 'Z'
+- **Expected:** get_player_name(25) == "Z"
+
+#### ✅ `test_all_letters_unique`
+- **Purpose:** Verify all player names 0-25 are unique
+- **Expected:** 26 unique letters
+
+#### ✅ `test_custom_name_overrides_letter`
+- **Purpose:** Verify custom names override default letters
+- **Expected:** get_player_name(0, ["Juan"]) == "Juan"
+
+#### ✅ `test_empty_custom_name_uses_letter`
+- **Purpose:** Verify empty custom names fall back to letters
+- **Expected:** get_player_name(1, ["Juan", ""]) == "B"
+
+#### ✅ `test_whitespace_custom_name_uses_letter`
+- **Purpose:** Verify whitespace-only names fall back to letters
+- **Expected:** get_player_name(1, ["Juan", "   "]) == "B"
+
+---
+
+### Class: `TestReplaceLettersWithNames` (3 tests)
+
+Tests for the `replace_letters_with_names()` function that handles regex replacement.
+
+#### ✅ `test_no_replacement_without_custom_names`
+- **Purpose:** Verify text unchanged without custom names
+- **Expected:** "(A,B) vs (C,D)" stays the same
+
+#### ✅ `test_replaces_all_letters`
+- **Purpose:** Verify all letters replaced with custom names
+- **Expected:** "(Juan,María) vs (Pedro,Ana)"
+
+#### ✅ `test_partial_replacement`
+- **Purpose:** Verify only provided names are replaced
+- **Expected:** Mix of names and letters
+
+---
+
+### Class: `TestCalendarToCsv` (7 tests)
+
+Tests for the `calendar_to_csv()` function that generates CSV output.
+
+#### ✅ `test_csv_has_header`
+- **Purpose:** Verify CSV has expected header row
+- **Expected:** "Round,Court,Match,Team 1,Team 2,Perfect Cut,Acceptable Cut"
+
+#### ✅ `test_csv_has_correct_number_of_lines`
+- **Purpose:** Verify CSV has header + one line per match
+- **Expected:** len(lines) == num_matches + 1
+
+#### ✅ `test_csv_match_format`
+- **Purpose:** Verify match lines have correct format
+- **Expected:** Correct number of comma-separated fields
+
+#### ✅ `test_csv_multi_court_rounds`
+- **Purpose:** Verify multi-court calendar shows correct rounds
+- **Expected:** Round and court numbers correct
+
+#### ✅ `test_csv_returns_string`
+- **Purpose:** Verify function returns a string
+- **Expected:** isinstance(csv, str) == True
+
+#### ✅ `test_csv_not_empty`
+- **Purpose:** Verify CSV output is not empty
+- **Expected:** len(csv) > 0
+
+#### ✅ `test_csv_with_custom_names`
+- **Purpose:** Verify CSV uses custom names when provided
+- **Expected:** Custom names appear in CSV output
+
+---
+
+### Class: `TestStreamlitAppIntegration` (4 tests)
+
+Integration tests for the Streamlit app workflow.
+
+#### ✅ `test_ga_generates_valid_calendar`
+- **Purpose:** Verify GA generates a calendar usable by the app
+- **Expected:** Valid calendar with correct parameters
+
+#### ✅ `test_ga_with_progress_callback`
+- **Purpose:** Verify GA works with progress callback
+- **Expected:** Callback called with generation info
+
+#### ✅ `test_generated_calendar_can_be_converted_to_csv`
+- **Purpose:** Verify generated calendars can be converted to CSV
+- **Expected:** CSV string with correct line count
+
+#### ✅ `test_csv_contains_all_matches`
+- **Purpose:** Verify CSV contains all matches from calendar
+- **Expected:** All matches present in output
+
+---
+
+### Class: `TestEdgeCases` (4 tests)
+
+Tests for edge cases and boundary conditions.
+
+#### ✅ `test_minimum_players`
+- **Purpose:** Test with minimum number of players (4)
+- **Expected:** CSV contains player names with "&" separator
+
+#### ✅ `test_large_player_count`
+- **Purpose:** Test player name generation for large counts
+- **Expected:** Player 15 is 'P'
+
+#### ✅ `test_csv_encoding_safe`
+- **Purpose:** Test that CSV output is UTF-8 safe
+- **Expected:** No encoding errors
+
+#### ✅ `test_csv_with_special_characters_in_names`
+- **Purpose:** Test CSV handles special characters in names
+- **Expected:** Names with accents (José, María) work correctly
+
+---
+
+**Last Updated:** 2026-01-02  
+**Phase:** 10.1 - Streamlit Web App v2.1  
+**Test Count:** 204 tests, all passing ✅
 
