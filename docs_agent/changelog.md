@@ -1085,7 +1085,135 @@ Round,Court,Match #,Team 1,Team 2,Perfect Cut,Acceptable Cut
 
 ---
 
-**Last Updated:** 2025-12-31  
-**Current Phase:** Phase 9.1 Complete - Multiple Courts Tests  
-**Status:** ✅ Production Ready with Comprehensive Test Coverage (178 tests)
+### 18. Streamlit Web App ✅
+
+**Objective:** Create a mobile-friendly web interface for generating tournament calendars from any device.
+
+**Status:** Completed
+
+**Completed:** 2026-01-02
+
+**What was done:**
+- Created `streamlit_app.py` with full-featured web interface
+- Added mobile-friendly responsive design with custom CSS
+- Implemented tournament configuration: players, courts, rounds
+- Added advanced options (population size, generations, mutation rate)
+- Displays cut points prominently (perfect and acceptable)
+- Shows statistics per player
+- Displays full calendar grouped by rounds
+- Added CSV download functionality
+- Created comprehensive test suite (15 tests)
+
+**Files created/modified:**
+- `streamlit_app.py` (new) - Main Streamlit web application
+- `pyproject.toml` - Added `streamlit>=1.29.0` to optional dependencies
+- `tests/test_streamlit_app.py` (new) - 15 tests for app helper functions
+
+**Features:**
+- **Configuration Panel:** Sliders for players (4-16), courts (1-4), rounds (3-30)
+- **Validation:** Automatic minimum player check based on courts
+- **Progress Bar:** Visual feedback during generation
+- **Cut Points Display:** Badges showing perfect (🟢) and acceptable (🟡) cut points
+- **Statistics:** Matches per player, total matches, cut point count
+- **Calendar Display:** Grouped by rounds with court labels
+- **Download:** CSV export with cut point markers
+
+**Test Categories (15 tests):**
+1. `TestGetPlayerName` (5 tests) - Player index to letter conversion
+2. `TestCalendarToCsv` (6 tests) - CSV generation and formatting
+3. `TestStreamlitAppIntegration` (3 tests) - End-to-end workflow
+4. `TestEdgeCases` (3 tests) - Boundary conditions
+
+**Usage:**
+```bash
+# Install dependencies
+uv sync --extra web
+
+# Run locally
+uv run streamlit run streamlit_app.py
+```
+
+**Deployment:**
+- Can be deployed free on Streamlit Cloud
+- Connect GitHub repo to streamlit.io/cloud
+- Automatic deployments on push
+
+**Notes:**
+- App uses session state to preserve results
+- Mobile-first design with responsive CSS
+- Cut points are the most visible feature (what users need most)
+
+---
+
+### 19. Streamlit Web App v2.1 - Enhanced UX ✅
+
+**Objective:** Improve the Streamlit app with real-time progress, custom player names, and better visibility.
+
+**Status:** Completed
+
+**Completed:** 2026-01-02
+
+**What was done:**
+
+1. **Real-time Generation Progress:**
+   - Added progress callback to GeneticAlgorithm.run() method
+   - Shows current generation, elapsed time, and fitness in real-time
+   - Visual feedback: `Generation 45/200 | ⏱️ 12.3s | 📈 Fitness: 25400`
+
+2. **Custom Player Names:**
+   - New expandable section "Player names (optional)"
+   - Text inputs for each player (A, B, C... → John, Mary, etc.)
+   - Names appear in calendar display, statistics, and CSV download
+   - Smart regex replacement to avoid replacing letters within names
+
+3. **Fixed Match Card Visibility:**
+   - Dark background (`#1a1a2e`) with white text for better contrast
+   - Green border for visual distinction
+   - Monospace font for readability
+
+4. **Interface Language:**
+   - Full English translation of all UI text
+   - CSV headers in English
+
+**Files modified:**
+- `src/genetic_algorithm.py` - Added `progress_callback` parameter to `run()` method
+- `streamlit_app.py` - Complete rewrite with new features
+- `tests/test_streamlit_app.py` - Added tests for new functionality (26 tests total)
+
+**New GeneticAlgorithm.run() signature:**
+```python
+def run(self, verbose: bool = True, progress_callback=None) -> Calendar:
+    """
+    Args:
+        verbose: If True, print progress information
+        progress_callback: Optional callback function called each generation.
+                          Signature: callback(generation, total_generations, best_fitness, avg_fitness)
+                          Return False to stop early.
+    """
+```
+
+**New helper functions in streamlit_app.py:**
+- `get_player_name(index, custom_names)` - Get player name (custom or letter)
+- `replace_letters_with_names(text, n_players, custom_names)` - Smart text replacement
+- `format_match_with_names(match_vector, n_players, custom_names)` - Format match display
+- `calendar_to_csv(calendar, custom_names)` - CSV with custom names
+
+**Test Categories (26 tests):**
+1. `TestGetPlayerName` (8 tests) - Including custom name handling
+2. `TestReplaceLettersWithNames` (3 tests) - Regex replacement logic
+3. `TestCalendarToCsv` (7 tests) - CSV with custom names
+4. `TestStreamlitAppIntegration` (4 tests) - Including progress callback test
+5. `TestEdgeCases` (4 tests) - Special characters, encoding
+
+**UI Improvements:**
+- Progress bar with real-time updates during optimization
+- Dark themed match cards for better readability
+- Completion message with generation count and time
+- Player names in statistics table
+
+---
+
+**Last Updated:** 2026-01-02  
+**Current Phase:** Phase 10.1 Complete - Streamlit Web App v2.1  
+**Status:** ✅ Production Ready with Enhanced Web Interface (204+ tests)
 

@@ -20,7 +20,7 @@ def main():
     print("=" * 70)
 
     # Tournament parameters
-    N_PLAYERS = 8  # Number of players
+    N_PLAYERS = 10  # Number of players
     N_ROUNDS = 10  # Number of rounds to play (total matches = N_ROUNDS * N_COURTS)
     N_COURTS = 2  # Number of courts available (default: 1 = sequential play)
     # With N_COURTS > 1, matches are grouped into rounds
@@ -29,7 +29,7 @@ def main():
     # Genetic Algorithm parameters (optimized to maximize cut points)
     # See: run_hyperparameter_optimization.py and analyze_results.py
     # Configuration optimized for maximum cut points (25+ average with mutation 0.2)
-    POPULATION_SIZE = 200  # Size of the population (optimal: 100-200)
+    POPULATION_SIZE = 100  # Size of the population (optimal: 100-200)
     GENERATIONS = (
         200  # Number of generations to evolve (optimal: 200 with early stopping)
     )

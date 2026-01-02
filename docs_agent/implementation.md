@@ -1122,6 +1122,147 @@ Trials: 100%|██████████| 3/3 [00:45<00:00, 15.0s/it]
 
 ---
 
-**Version:** 1.3  
-**Last Modified:** 2025-11-29
+## 🌐 Streamlit Web App (Phase 10)
+
+### Overview
+
+A mobile-friendly web interface for generating tournament calendars from any device (phone, tablet, computer).
+
+### File: `streamlit_app.py`
+
+#### Main Components
+
+**1. Configuration Section:**
+- Player slider (4-16 players)
+- Court slider (1-4 courts)
+- Rounds slider (3-30 rounds)
+- Automatic validation (min players = courts × 4)
+
+**2. Player Names (Optional - Expandable):**
+- Text inputs for each player
+- Leave blank to use letters (A, B, C...)
+- Names appear in calendar, statistics, and CSV
+
+**3. Advanced Options (Collapsed):**
+- Population size (50, 100, 150, 200)
+- Generations (100, 150, 200, 300)
+- Mutation rate (0.05-0.30)
+
+**4. Real-time Progress Display:**
+- Generation counter with progress bar
+- Elapsed time tracking
+- Current fitness value
+- Completion message with statistics
+
+**5. Results Display:**
+- Cut points badges (perfect 🟢 and acceptable 🟡)
+- Statistics (total matches, matches per player, cut points)
+- Full calendar grouped by rounds with custom names
+- CSV download button
+
+#### Helper Functions
+
+```python
+def get_player_name(index: int, custom_names: list = None) -> str:
+    """Convert player index to name. Uses custom name if provided, else letter."""
+    if custom_names and index < len(custom_names) and custom_names[index].strip():
+        return custom_names[index].strip()
+    return chr(ord('A') + index)
+
+def replace_letters_with_names(text: str, n_players: int, custom_names: list = None) -> str:
+    """Replace player letters with custom names using regex word boundaries."""
+    # Uses: r'(?<![A-Za-z])' + letter + r'(?![A-Za-z])' to avoid replacing within names
+
+def format_match_with_names(match_vector, n_players: int, custom_names: list = None) -> str:
+    """Format match with custom player names."""
+
+def calendar_to_csv(calendar: Calendar, custom_names: list = None) -> str:
+    """Convert calendar to CSV string for download."""
+    # Returns: "Round,Court,Match,Team 1,Team 2,Perfect Cut,Acceptable Cut"
+```
+
+#### Progress Callback
+
+The app uses a callback function to update the UI during optimization:
+
+```python
+def update_progress(gen, total_gen, best_fit, avg_fit):
+    """Callback to update Streamlit UI with progress."""
+    progress = gen / total_gen
+    progress_bar.progress(progress)
+    status_text.markdown(f"Generation {gen}/{total_gen} | {elapsed:.1f}s | Fitness: {best_fit:.0f}")
+    return True  # Continue evolution
+
+best_calendar = ga.run(verbose=False, progress_callback=update_progress)
+```
+
+#### Session State
+
+The app uses Streamlit's session state to preserve results between reruns:
+- `st.session_state['calendar']` - Generated calendar
+- `st.session_state['is_valid']` - Validation result
+- `st.session_state['quality']` - Quality level
+- `st.session_state['n_players']` - Number of players
+- `st.session_state['custom_names']` - List of custom player names
+- `st.session_state['elapsed_time']` - Optimization time
+- `st.session_state['generations_run']` - Actual generations executed
+
+#### CSS Styling
+
+Custom CSS for better visibility:
+- Dark match cards (`#1a1a2e` background, white text)
+- Green border for match cards
+- Blue round headers
+- Progress info box with monospace font
+
+### Running Locally
+
+```bash
+# Install web dependencies
+uv sync --extra web
+
+# Run the app
+uv run streamlit run streamlit_app.py
+```
+
+Opens at `http://localhost:8501`
+
+### Deployment to Streamlit Cloud
+
+1. Push code to GitHub
+2. Go to [streamlit.io/cloud](https://streamlit.io/cloud)
+3. Connect your GitHub repository
+4. Select `streamlit_app.py` as main file
+5. Deploy (free hosting)
+
+### Test Suite
+
+File: `tests/test_streamlit_app.py`
+
+**Test Classes (26 tests total):**
+1. `TestGetPlayerName` (8 tests) - Player name conversion, custom names, empty names
+2. `TestReplaceLettersWithNames` (3 tests) - Regex replacement logic
+3. `TestCalendarToCsv` (7 tests) - CSV generation with custom names
+4. `TestStreamlitAppIntegration` (4 tests) - End-to-end workflow, progress callback
+5. `TestEdgeCases` (4 tests) - Edge cases, special characters, encoding
+
+**Running Tests:**
+```bash
+uv run pytest tests/test_streamlit_app.py -v
+```
+
+### Dependencies
+
+Added to `pyproject.toml`:
+```toml
+[project.optional-dependencies]
+web = [
+    "streamlit>=1.29.0",
+]
+```
+
+---
+
+**Version:** 1.5  
+**Last Modified:** 2026-01-02
 

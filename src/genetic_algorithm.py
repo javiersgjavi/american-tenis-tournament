@@ -888,12 +888,15 @@ class GeneticAlgorithm:
             matches=mutated_matches, n_players=self.n_players, n_courts=self.n_courts
         )
 
-    def run(self, verbose: bool = True) -> Calendar:
+    def run(self, verbose: bool = True, progress_callback=None) -> Calendar:
         """
         Run the genetic algorithm.
 
         Args:
             verbose: If True, print progress information
+            progress_callback: Optional callback function called each generation.
+                              Signature: callback(generation, total_generations, best_fitness, avg_fitness)
+                              Return False to stop early.
 
         Returns:
             Best calendar found
@@ -962,6 +965,20 @@ class GeneticAlgorithm:
                     "No Improv": generations_without_improvement,
                 }
             )
+
+            # Call progress callback if provided
+            if progress_callback is not None:
+                should_continue = progress_callback(
+                    generation + 1,
+                    self.generations,
+                    best_fitness,
+                    gen_avg_fitness
+                )
+                if should_continue is False:
+                    pbar.close()
+                    if verbose:
+                        print(f"\n⏹️  Stopped by callback at generation {generation + 1}")
+                    return best_calendar
 
             # Check early stopping condition
             if (
