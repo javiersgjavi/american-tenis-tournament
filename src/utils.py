@@ -71,3 +71,39 @@ def generate_random_match(n_players: int) -> np.ndarray:
         match_vector[n_players + player] = 1
 
     return match_vector
+
+
+def get_players_from_vector(match_vector: np.ndarray, n_players: int) -> np.ndarray:
+    """
+    Extract player indices from a match vector using numpy operations.
+
+    This is much faster than creating a Match object and calling get_players().
+
+    Args:
+        match_vector: One-hot encoded match vector of length 2*n_players
+        n_players: Number of players in the tournament
+
+    Returns:
+        Array of 4 player indices
+    """
+    team1_indices = np.where(match_vector[:n_players] == 1)[0]
+    team2_indices = np.where(match_vector[n_players:] == 1)[0]
+    return np.concatenate([team1_indices, team2_indices])
+
+
+def get_teams_from_vector(match_vector: np.ndarray, n_players: int) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Extract team indices from a match vector using numpy operations.
+
+    This is much faster than creating a Match object and calling get_teams().
+
+    Args:
+        match_vector: One-hot encoded match vector of length 2*n_players
+        n_players: Number of players in the tournament
+
+    Returns:
+        Tuple of (team1_indices, team2_indices) as numpy arrays
+    """
+    team1_indices = np.where(match_vector[:n_players] == 1)[0]
+    team2_indices = np.where(match_vector[n_players:] == 1)[0]
+    return team1_indices, team2_indices

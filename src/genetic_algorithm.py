@@ -10,7 +10,7 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 
 from .dataclasses import Match, Calendar, can_use_multiple_courts
-from .utils import generate_random_match, is_valid_match
+from .utils import generate_random_match, is_valid_match, get_players_from_vector, get_teams_from_vector
 
 
 # ============================================================================
@@ -88,8 +88,7 @@ def calculate_opponent_repetition_penalty(calendar: Calendar) -> float:
     opponent_counts = defaultdict(int)
 
     for match_vector in calendar.matches:
-        match = Match(match_vector=match_vector, n_players=calendar.n_players)
-        team1, team2 = match.get_teams()
+        team1, team2 = get_teams_from_vector(match_vector, calendar.n_players)
 
         # Count all opponent pairings (team1 vs team2)
         for p1 in team1:
@@ -122,8 +121,7 @@ def calculate_team_repetition_penalty(calendar: Calendar) -> float:
     team_counts = defaultdict(int)
 
     for match_vector in calendar.matches:
-        match = Match(match_vector=match_vector, n_players=calendar.n_players)
-        team1, team2 = match.get_teams()
+        team1, team2 = get_teams_from_vector(match_vector, calendar.n_players)
 
         # Count team pairings in team1
         for i, p1 in enumerate(team1):
@@ -409,8 +407,7 @@ def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
         matches_count = {i: 0 for i in range(calendar.n_players)}
 
         for i in range(cut_index):
-            match = calendar.get_match(i)
-            players = match.get_players()
+            players = get_players_from_vector(calendar.matches[i], calendar.n_players)
             for player in players:
                 matches_count[player] += 1
 

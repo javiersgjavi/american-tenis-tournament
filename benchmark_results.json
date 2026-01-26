@@ -1,0 +1,76 @@
+[
+  {
+    "label": "baseline",
+    "timestamp": "2026-01-26T10:43:26.379870",
+    "config": {
+      "n_players": 10,
+      "n_rounds": 10,
+      "n_courts": 2,
+      "population_size": 50,
+      "generations": 50,
+      "mutation_rate": 0.2,
+      "crossover_rate": 0.8,
+      "elitism_size": 2,
+      "weight_balance": 100.0,
+      "weight_opponent_rep": 10.0,
+      "weight_team_rep": 10.0,
+      "weight_waiting": 5.0,
+      "weight_early_cut": 75.0,
+      "n_jobs": -1,
+      "early_stopping_patience": 20
+    },
+    "num_runs": 3,
+    "times": [
+      16.657614946365356,
+      16.794004440307617,
+      17.06552791595459
+    ],
+    "fitness_scores": [
+      44082.927773300966,
+      43962.927773300966,
+      43480.0
+    ],
+    "avg_time": 16.839049100875854,
+    "std_time": 0.16954844690934703,
+    "avg_fitness": 43841.95184886731,
+    "std_fitness": 260.58505415551406
+  },
+  {
+    "label": "opt1-precompute-players",
+    "timestamp": "2026-01-26T10:50:26.944438",
+    "config": {
+      "n_players": 10,
+      "n_rounds": 10,
+      "n_courts": 2,
+      "population_size": 50,
+      "generations": 50,
+      "mutation_rate": 0.2,
+      "crossover_rate": 0.8,
+      "elitism_size": 2,
+      "weight_balance": 100.0,
+      "weight_opponent_rep": 10.0,
+      "weight_team_rep": 10.0,
+      "weight_waiting": 5.0,
+      "weight_early_cut": 75.0,
+      "n_jobs": -1,
+      "early_stopping_patience": 20
+    },
+    "num_runs": 3,
+    "times": [
+      15.912192344665527,
+      15.611539125442505,
+      16.422021627426147
+    ],
+    "fitness_scores": [
+      44087.927773300966,
+      43987.927773300966,
+      43947.927773300966
+    ],
+    "avg_time": 15.98191769917806,
+    "std_time": 0.3345312046250594,
+    "avg_fitness": 44007.927773300966,
+    "std_fitness": 58.87840577551898,
+    "speedup_vs_baseline": 1.053631323714167,
+    "improvement_pct": 5.0901413527751505
+  }
+]
