@@ -79,26 +79,33 @@ def calculate_opponent_repetition_penalty(calendar: Calendar) -> float:
 
     Formula: penalty = Σ (opponent_count[pair] - 1)² for all opponent pairs
 
+    Optimized using numpy matrix operations for faster computation.
+
     Args:
         calendar: Calendar object to evaluate
 
     Returns:
         Penalty value (0 = no repetitions, higher = more repetitions)
     """
-    opponent_counts = defaultdict(int)
+    # Vectorized approach: create opponent co-occurrence matrix
+    opponent_matrix = np.zeros((calendar.n_players, calendar.n_players), dtype=int)
 
     for match_vector in calendar.matches:
-        team1, team2 = get_teams_from_vector(match_vector, calendar.n_players)
+        team1 = match_vector[:calendar.n_players]
+        team2 = match_vector[calendar.n_players:]
 
-        # Count all opponent pairings (team1 vs team2)
-        for p1 in team1:
-            for p2 in team2:
-                # Use sorted tuple to avoid counting (A,B) and (B,A) separately
-                pair = tuple(sorted([p1, p2]))
-                opponent_counts[pair] += 1
+        # Outer product counts all opponent pairs (team1 vs team2)
+        # Add both directions for symmetry
+        opponent_matrix += np.outer(team1, team2)
+        opponent_matrix += np.outer(team2, team1)
 
-    # Calculate penalty: sum of (count - 1)² for each pair
-    penalty = sum((count - 1) ** 2 for count in opponent_counts.values())
+    # Extract upper triangle (k=1 to skip diagonal) to avoid double counting
+    upper_triangle = np.triu(opponent_matrix, k=1)
+
+    # Calculate penalty only for pairs with count > 0
+    non_zero_counts = upper_triangle[upper_triangle > 0]
+    penalty = np.sum((non_zero_counts - 1) ** 2)
+
     return float(penalty)
 
 
@@ -112,31 +119,32 @@ def calculate_team_repetition_penalty(calendar: Calendar) -> float:
 
     Formula: penalty = Σ (team_count[pair] - 1)² for all team pairs
 
+    Optimized using numpy matrix operations for faster computation.
+
     Args:
         calendar: Calendar object to evaluate
 
     Returns:
         Penalty value (0 = no repetitions, higher = more repetitions)
     """
-    team_counts = defaultdict(int)
+    # Vectorized approach: create teammate co-occurrence matrix
+    team_matrix = np.zeros((calendar.n_players, calendar.n_players), dtype=int)
 
     for match_vector in calendar.matches:
-        team1, team2 = get_teams_from_vector(match_vector, calendar.n_players)
+        team1 = match_vector[:calendar.n_players]
+        team2 = match_vector[calendar.n_players:]
 
-        # Count team pairings in team1
-        for i, p1 in enumerate(team1):
-            for p2 in team1[i + 1 :]:
-                pair = tuple(sorted([p1, p2]))
-                team_counts[pair] += 1
+        # Outer product of each team with itself counts all teammate pairs
+        team_matrix += np.outer(team1, team1)
+        team_matrix += np.outer(team2, team2)
 
-        # Count team pairings in team2
-        for i, p1 in enumerate(team2):
-            for p2 in team2[i + 1 :]:
-                pair = tuple(sorted([p1, p2]))
-                team_counts[pair] += 1
+    # Extract upper triangle (k=1 to skip diagonal - player with themselves)
+    upper_triangle = np.triu(team_matrix, k=1)
 
-    # Calculate penalty: sum of (count - 1)² for each pair
-    penalty = sum((count - 1) ** 2 for count in team_counts.values())
+    # Calculate penalty only for pairs with count > 0
+    non_zero_counts = upper_triangle[upper_triangle > 0]
+    penalty = np.sum((non_zero_counts - 1) ** 2)
+
     return float(penalty)
 
 
