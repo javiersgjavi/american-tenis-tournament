@@ -218,24 +218,22 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
     n_courts = calendar.n_courts
     total_rounds = calendar.get_total_rounds()
 
+    # Initialize match counter (incremental approach - much faster!)
+    matches_count = np.zeros(calendar.n_players, dtype=int)
+
     # Check cut points only at round boundaries
     for round_num in range(1, total_rounds + 1):
-        # Get the match index at the end of this round
-        cut_index = round_num * n_courts
-        # Make sure we don't exceed the calendar length (last round might be incomplete)
-        cut_index = min(cut_index, len(calendar))
+        # Get match indices for this round
+        start_idx = (round_num - 1) * n_courts
+        end_idx = min(round_num * n_courts, len(calendar))
 
-        # Count matches per player up to this point
-        matches_count = {i: 0 for i in range(calendar.n_players)}
+        # Incrementally add matches from this round
+        for i in range(start_idx, end_idx):
+            players = get_players_from_vector(calendar.matches[i], calendar.n_players)
+            matches_count[players] += 1
 
-        for i in range(cut_index):
-            match = calendar.get_match(i)
-            players = match.get_players()
-            for player in players:
-                matches_count[player] += 1
-
-        counts = list(matches_count.values())
-        max_diff = max(counts) - min(counts)
+        # Check balance at end of round (numpy operations are fast)
+        max_diff = matches_count.max() - matches_count.min()
 
         # Check for perfect cut
         if max_diff == 0:
@@ -396,24 +394,22 @@ def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
     n_courts = calendar.n_courts
     total_rounds = calendar.get_total_rounds()
 
+    # Initialize match counter (incremental approach)
+    matches_count = np.zeros(calendar.n_players, dtype=int)
+
     # Check cut points only at round boundaries
     for round_num in range(1, total_rounds + 1):
-        # Get the match index at the end of this round
-        cut_index = round_num * n_courts
-        # Make sure we don't exceed the calendar length (last round might be incomplete)
-        cut_index = min(cut_index, len(calendar))
+        # Get match indices for this round
+        start_idx = (round_num - 1) * n_courts
+        end_idx = min(round_num * n_courts, len(calendar))
 
-        # Count matches per player up to this point
-        matches_count = {i: 0 for i in range(calendar.n_players)}
-
-        for i in range(cut_index):
+        # Incrementally add matches from this round
+        for i in range(start_idx, end_idx):
             players = get_players_from_vector(calendar.matches[i], calendar.n_players)
-            for player in players:
-                matches_count[player] += 1
+            matches_count[players] += 1
 
-        # Calculate difference
-        counts = list(matches_count.values())
-        max_diff = max(counts) - min(counts)
+        # Check balance at end of round
+        max_diff = matches_count.max() - matches_count.min()
 
         # Check for perfect cut
         if max_diff == 0:

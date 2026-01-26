@@ -72,5 +72,43 @@
     "std_fitness": 58.87840577551898,
     "speedup_vs_baseline": 1.053631323714167,
     "improvement_pct": 5.0901413527751505
+  },
+  {
+    "label": "opt3-incremental-cut-bonus",
+    "timestamp": "2026-01-26T10:53:15.216050",
+    "config": {
+      "n_players": 10,
+      "n_rounds": 10,
+      "n_courts": 2,
+      "population_size": 50,
+      "generations": 50,
+      "mutation_rate": 0.2,
+      "crossover_rate": 0.8,
+      "elitism_size": 2,
+      "weight_balance": 100.0,
+      "weight_opponent_rep": 10.0,
+      "weight_team_rep": 10.0,
+      "weight_waiting": 5.0,
+      "weight_early_cut": 75.0,
+      "n_jobs": -1,
+      "early_stopping_patience": 20
+    },
+    "num_runs": 3,
+    "times": [
+      12.483396768569946,
+      12.81137990951538,
+      12.863804578781128
+    ],
+    "fitness_scores": [
+      43992.927773300966,
+      44032.927773300966,
+      44072.927773300966
+    ],
+    "avg_time": 12.719527085622152,
+    "std_time": 0.16833544182234675,
+    "avg_fitness": 44032.927773300966,
+    "std_fitness": 32.65986323710904,
+    "speedup_vs_baseline": 1.323873834893619,
+    "improvement_pct": 24.46410121245761
   }
 ]

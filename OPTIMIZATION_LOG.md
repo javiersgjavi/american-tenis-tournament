@@ -66,21 +66,25 @@ Pre-compute player statistics using vectorial numpy operations instead of iterat
 
 ## Optimization 3: Optimize calculate_early_cut_bonus()
 
-**Status**: Pending
+**Status**: ✅ Completed
 
 **Description**:
-Calculate cut points incrementally instead of recounting from scratch for each round. This is the most expensive function in the codebase.
+Calculate cut points incrementally instead of recounting from scratch for each round. This eliminates the O(n_rounds² × n_matches) complexity, making it O(n_matches).
 
 **Expected Impact**: 40-60% faster
+**Actual Impact**: 24.5% faster (cumulative: 32% vs baseline)
 
 **Changes**:
-- Refactor to use incremental counting
-- Eliminate Match object creation in inner loops
+- Refactored `calculate_early_cut_bonus()` to use incremental counting with numpy arrays
+- Refactored `detect_cut_points()` similarly
+- Changed from dict to numpy array for match counting
+- Use numpy min/max operations instead of list conversions
 
 **Results**:
-- Time: TBD
-- Speedup: TBD
-- Tests: TBD
+- Time: **12.72s ± 0.13s** (vs 15.98s opt1, 16.84s baseline)
+- Speedup: **1.32x** vs baseline
+- Cumulative improvement: **24.5%**
+- Tests: ✅ All 204 tests passing
 
 ---
 
@@ -110,6 +114,6 @@ Use numpy matrix operations instead of defaultdict and loops for calculating opp
 |--------------|--------|----------|---------------------|-------------------|
 | Baseline     | ✅     | 16.84    | 1.00x              | 1.00x             |
 | Opt 1        | ✅     | 15.98    | 1.05x              | 1.05x             |
+| Opt 3        | ✅     | 12.72    | 1.32x              | 1.32x             |
 | Opt 2        | ⏳     | -        | -                  | -                 |
-| Opt 3        | ⏳     | -        | -                  | -                 |
 | Opt 4        | ⏳     | -        | -                  | -                 |
