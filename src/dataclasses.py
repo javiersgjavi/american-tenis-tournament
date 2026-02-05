@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import BaseModel, field_validator, ConfigDict
 from typing import Optional
 
-from .utils import is_valid_match
+from .utils import is_valid_match, get_players_from_vector
 
 
 # ============================================================================
@@ -316,18 +316,19 @@ class Calendar(BaseModel):
         """
         Count how many matches each player plays.
 
+        Uses vectorized numpy operations for performance.
+
         Returns:
             Dictionary mapping player_index -> match_count
         """
-        counts = {i: 0 for i in range(self.n_players)}
+        # Vectorized approach: sum across all matches
+        # Each match has 2 players in team1 and 2 in team2
+        team1_counts = self.matches[:, :self.n_players].sum(axis=0)
+        team2_counts = self.matches[:, self.n_players:].sum(axis=0)
+        total_counts = team1_counts + team2_counts
 
-        for match_vector in self.matches:
-            match = Match(match_vector=match_vector, n_players=self.n_players)
-            players = match.get_players()
-            for player in players:
-                counts[player] += 1
-
-        return counts
+        # Convert to dict for backward compatibility
+        return {i: int(count) for i, count in enumerate(total_counts)}
 
     def get_waiting_rounds_per_player(self) -> dict[int, list[int]]:
         """
@@ -343,11 +344,11 @@ class Calendar(BaseModel):
         waiting_rounds = {i: [] for i in range(self.n_players)}
 
         for player in range(self.n_players):
-            # Find all rounds where this player plays
+            # Find all rounds where this player plays (optimized)
             rounds_played = set()
             for i, match_vector in enumerate(self.matches):
-                match = Match(match_vector=match_vector, n_players=self.n_players)
-                if player in match.get_players():
+                players = get_players_from_vector(match_vector, self.n_players)
+                if player in players:
                     round_num = self.get_round_for_match(i)
                     rounds_played.add(round_num)
 
@@ -373,11 +374,11 @@ class Calendar(BaseModel):
         waiting_matches = {i: [] for i in range(self.n_players)}
 
         for player in range(self.n_players):
-            # Find all match indices where this player plays
+            # Find all match indices where this player plays (optimized)
             match_indices = []
             for i, match_vector in enumerate(self.matches):
-                match = Match(match_vector=match_vector, n_players=self.n_players)
-                if player in match.get_players():
+                players = get_players_from_vector(match_vector, self.n_players)
+                if player in players:
                     match_indices.append(i)
 
             # Calculate gaps between consecutive matches
