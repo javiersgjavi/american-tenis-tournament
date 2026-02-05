@@ -10,7 +10,7 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 
 from .dataclasses import Match, Calendar, can_use_multiple_courts
-from .utils import generate_random_match, is_valid_match
+from .utils import generate_random_match, is_valid_match, get_players_from_vector, get_teams_from_vector
 
 
 # ============================================================================
@@ -79,27 +79,33 @@ def calculate_opponent_repetition_penalty(calendar: Calendar) -> float:
 
     Formula: penalty = Σ (opponent_count[pair] - 1)² for all opponent pairs
 
+    Optimized using numpy matrix operations for faster computation.
+
     Args:
         calendar: Calendar object to evaluate
 
     Returns:
         Penalty value (0 = no repetitions, higher = more repetitions)
     """
-    opponent_counts = defaultdict(int)
+    # Vectorized approach: create opponent co-occurrence matrix
+    opponent_matrix = np.zeros((calendar.n_players, calendar.n_players), dtype=int)
 
     for match_vector in calendar.matches:
-        match = Match(match_vector=match_vector, n_players=calendar.n_players)
-        team1, team2 = match.get_teams()
+        team1 = match_vector[:calendar.n_players]
+        team2 = match_vector[calendar.n_players:]
 
-        # Count all opponent pairings (team1 vs team2)
-        for p1 in team1:
-            for p2 in team2:
-                # Use sorted tuple to avoid counting (A,B) and (B,A) separately
-                pair = tuple(sorted([p1, p2]))
-                opponent_counts[pair] += 1
+        # Outer product counts all opponent pairs (team1 vs team2)
+        # Add both directions for symmetry
+        opponent_matrix += np.outer(team1, team2)
+        opponent_matrix += np.outer(team2, team1)
 
-    # Calculate penalty: sum of (count - 1)² for each pair
-    penalty = sum((count - 1) ** 2 for count in opponent_counts.values())
+    # Extract upper triangle (k=1 to skip diagonal) to avoid double counting
+    upper_triangle = np.triu(opponent_matrix, k=1)
+
+    # Calculate penalty only for pairs with count > 0
+    non_zero_counts = upper_triangle[upper_triangle > 0]
+    penalty = np.sum((non_zero_counts - 1) ** 2)
+
     return float(penalty)
 
 
@@ -113,32 +119,32 @@ def calculate_team_repetition_penalty(calendar: Calendar) -> float:
 
     Formula: penalty = Σ (team_count[pair] - 1)² for all team pairs
 
+    Optimized using numpy matrix operations for faster computation.
+
     Args:
         calendar: Calendar object to evaluate
 
     Returns:
         Penalty value (0 = no repetitions, higher = more repetitions)
     """
-    team_counts = defaultdict(int)
+    # Vectorized approach: create teammate co-occurrence matrix
+    team_matrix = np.zeros((calendar.n_players, calendar.n_players), dtype=int)
 
     for match_vector in calendar.matches:
-        match = Match(match_vector=match_vector, n_players=calendar.n_players)
-        team1, team2 = match.get_teams()
+        team1 = match_vector[:calendar.n_players]
+        team2 = match_vector[calendar.n_players:]
 
-        # Count team pairings in team1
-        for i, p1 in enumerate(team1):
-            for p2 in team1[i + 1 :]:
-                pair = tuple(sorted([p1, p2]))
-                team_counts[pair] += 1
+        # Outer product of each team with itself counts all teammate pairs
+        team_matrix += np.outer(team1, team1)
+        team_matrix += np.outer(team2, team2)
 
-        # Count team pairings in team2
-        for i, p1 in enumerate(team2):
-            for p2 in team2[i + 1 :]:
-                pair = tuple(sorted([p1, p2]))
-                team_counts[pair] += 1
+    # Extract upper triangle (k=1 to skip diagonal - player with themselves)
+    upper_triangle = np.triu(team_matrix, k=1)
 
-    # Calculate penalty: sum of (count - 1)² for each pair
-    penalty = sum((count - 1) ** 2 for count in team_counts.values())
+    # Calculate penalty only for pairs with count > 0
+    non_zero_counts = upper_triangle[upper_triangle > 0]
+    penalty = np.sum((non_zero_counts - 1) ** 2)
+
     return float(penalty)
 
 
@@ -220,24 +226,22 @@ def calculate_early_cut_bonus(calendar: Calendar) -> float:
     n_courts = calendar.n_courts
     total_rounds = calendar.get_total_rounds()
 
+    # Initialize match counter (incremental approach - much faster!)
+    matches_count = np.zeros(calendar.n_players, dtype=int)
+
     # Check cut points only at round boundaries
     for round_num in range(1, total_rounds + 1):
-        # Get the match index at the end of this round
-        cut_index = round_num * n_courts
-        # Make sure we don't exceed the calendar length (last round might be incomplete)
-        cut_index = min(cut_index, len(calendar))
+        # Get match indices for this round
+        start_idx = (round_num - 1) * n_courts
+        end_idx = min(round_num * n_courts, len(calendar))
 
-        # Count matches per player up to this point
-        matches_count = {i: 0 for i in range(calendar.n_players)}
+        # Incrementally add matches from this round
+        for i in range(start_idx, end_idx):
+            players = get_players_from_vector(calendar.matches[i], calendar.n_players)
+            matches_count[players] += 1
 
-        for i in range(cut_index):
-            match = calendar.get_match(i)
-            players = match.get_players()
-            for player in players:
-                matches_count[player] += 1
-
-        counts = list(matches_count.values())
-        max_diff = max(counts) - min(counts)
+        # Check balance at end of round (numpy operations are fast)
+        max_diff = matches_count.max() - matches_count.min()
 
         # Check for perfect cut
         if max_diff == 0:
@@ -398,25 +402,22 @@ def detect_cut_points(calendar: Calendar) -> tuple[list[int], list[int]]:
     n_courts = calendar.n_courts
     total_rounds = calendar.get_total_rounds()
 
+    # Initialize match counter (incremental approach)
+    matches_count = np.zeros(calendar.n_players, dtype=int)
+
     # Check cut points only at round boundaries
     for round_num in range(1, total_rounds + 1):
-        # Get the match index at the end of this round
-        cut_index = round_num * n_courts
-        # Make sure we don't exceed the calendar length (last round might be incomplete)
-        cut_index = min(cut_index, len(calendar))
+        # Get match indices for this round
+        start_idx = (round_num - 1) * n_courts
+        end_idx = min(round_num * n_courts, len(calendar))
 
-        # Count matches per player up to this point
-        matches_count = {i: 0 for i in range(calendar.n_players)}
+        # Incrementally add matches from this round
+        for i in range(start_idx, end_idx):
+            players = get_players_from_vector(calendar.matches[i], calendar.n_players)
+            matches_count[players] += 1
 
-        for i in range(cut_index):
-            match = calendar.get_match(i)
-            players = match.get_players()
-            for player in players:
-                matches_count[player] += 1
-
-        # Calculate difference
-        counts = list(matches_count.values())
-        max_diff = max(counts) - min(counts)
+        # Check balance at end of round
+        max_diff = matches_count.max() - matches_count.min()
 
         # Check for perfect cut
         if max_diff == 0:
